@@ -1,0 +1,3 @@
+# Nigerian Inflation Predictor — Python Dependencies
+# Dependencies are added incrementally as each module is developed.
+# Do not install all packages upfront.

@@ -1,0 +1,51 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+*.egg
+.eggs/
+
+# Virtual environments
+venv/
+env/
+.venv/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Environment variables
+.env
+*.env
+
+# Java / Spring Boot
+api/target/
+api/*.jar
+api/.gradle/
+api/build/
+
+# PostgreSQL
+*.sql.bak
+
+# Results (large generated files — keep structure, ignore heavy outputs)
+results/*.png
+results/*.pdf
+results/*.csv
+!results/.gitkeep
+
+# Data (raw data files may be large; tracked selectively)
+data/raw/*.xlsx
+data/raw/*.xls
