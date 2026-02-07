@@ -1,35 +1,36 @@
-# Week 1, Day 3 — Data Ingestion: Loading & Validating the Dataset
+# Week 1, Day 3 — Data Ingestion: Building the Loader Step by Step
 
 ## What You'll Learn Today
 
 - How to create a CSV dataset with realistic Nigerian macro data
-- How to write a reusable Python script that loads and validates data
+- How to build a reusable data ingestion script **one piece at a time**
 - What "schema validation" means and why you need it
 - How to run Python modules from the command line
 
 ## Why This Matters
 
-The ingestion script is the front door of your entire system. Every model, every plot, every result starts here. If bad data gets through this door, everything downstream is wrong. That's why we validate the data on the way in — checking column names, data types, and date formats.
+The ingestion script is the front door of your entire system. Every model, every plot, every result starts here. If bad data gets through this door, everything downstream is wrong. That is why we validate the data on the way in -- checking column names, data types, and date formats.
 
 ## Why This Matters for Nigeria
 
-Nigerian macro data from the CBN Statistical Bulletin sometimes has formatting issues — dates in different formats, missing months, values stored as text instead of numbers. Your ingestion script must handle these robustly.
+Nigerian macro data from the CBN Statistical Bulletin sometimes has formatting issues -- dates in different formats, missing months, values stored as text instead of numbers. Your ingestion script must handle these robustly.
 
 ---
 
-## Step 1: No New Packages
+## Part 1: Create the Dataset
 
-pandas (installed yesterday) is all you need for data ingestion.
+This CSV file contains monthly Nigerian macro data from January 2000 to December 2024 (300 observations). The four variables are:
 
----
+- **mpr** -- Monetary Policy Rate (%), the CBN's benchmark interest rate
+- **inflation** -- Year-over-year headline CPI inflation (%)
+- **exchange_rate** -- Naira per US dollar (official rate)
+- **m2** -- Broad money supply (billions of Naira)
 
-## Step 2: Create the Dataset
-
-This CSV file contains monthly Nigerian macro data from January 2000 to December 2024. The values are based on publicly known trends in MPR, inflation, exchange rate, and M2.
+The values are based on publicly known trends from the CBN Statistical Bulletin and NBS reports.
 
 **For your thesis:** Replace this with actual CBN/NBS data from the sources listed in `docs/data_sources.md`. The structure will be identical.
 
-**File: `data/raw/nigeria_macro_data.csv`**
+Create the file `data/raw/nigeria_macro_data.csv` and paste in all 300 rows below:
 
 ```csv
 date,mpr,inflation,exchange_rate,m2
@@ -335,22 +336,342 @@ date,mpr,inflation,exchange_rate,m2
 2024-12-01,27.50,34.80,1535.00,284975.80
 ```
 
-**Notice key Nigerian economic events visible in this data:**
-- **2006-2007**: Low inflation (~3-8%) during oil boom and Soludo-era reforms
-- **2008-2009**: Global financial crisis — exchange rate jumps from 117 to 150
-- **2011**: Emergency MPR hike to 12% (Sanusi era) to defend the Naira
-- **2016**: Exchange rate jumps from 199 to 310 after CBN floats the Naira
-- **2020-2021**: COVID — CBN cuts MPR, inflation rises
-- **2023 June**: Exchange rate unification — Naira drops from 462 to 750 overnight
-- **2024**: Aggressive tightening — MPR raised from 18.75% to 27.50%
+**Key Nigerian economic events visible in this data:**
+- **2006-2007**: Low inflation (~3-8%) during the oil boom and Soludo-era CBN reforms
+- **2008-2009**: Global financial crisis -- exchange rate jumps from 117 to 150, M2 briefly dips as capital flees
+- **2011**: Emergency MPR hike to 12% (Sanusi era) to defend the Naira after post-election spending
+- **2016 June**: CBN floats the Naira -- exchange rate jumps from 199 to 283 in one month, then to 310+
+- **2020-2021**: COVID pandemic -- CBN cuts MPR to stimulate economy, inflation rises past 17%
+- **2023 June**: Exchange rate unification under Tinubu -- Naira drops from 462 to 750 overnight
+- **2024 Feb-onward**: Aggressive tightening cycle -- MPR raised from 18.75% to 27.50% in under a year
+
+Scroll through the data and see if you can spot each of these events. This is the kind of pattern recognition that your model will eventually learn to do mathematically.
 
 ---
 
-## Step 3: Create the Ingestion Script
+## Part 2: Build `data_ingestion/ingest.py` -- Step by Step
 
-This script is the **official entry point** for all data into the system.
+We are going to build the ingestion script **one piece at a time**. After each step, you will run the script and see output. This way, if something breaks, you know exactly which piece caused it.
 
-**File: `data_ingestion/ingest.py`**
+Do **not** skip ahead. Type each step, run it, and verify the output before moving on.
+
+---
+
+### Step 1: Imports and Constants
+
+Create the file `data_ingestion/ingest.py` and type in the following:
+
+```python
+import os
+import pandas as pd
+
+REQUIRED_COLUMNS = ["date", "mpr", "inflation", "exchange_rate", "m2"]
+RAW_DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data", "raw")
+DEFAULT_FILE = "nigeria_macro_data.csv"
+
+# Quick test — just print the path to make sure it's right
+filepath = os.path.join(RAW_DATA_DIR, DEFAULT_FILE)
+print(f"Looking for data at: {filepath}")
+print(f"File exists: {os.path.exists(filepath)}")
+```
+
+**Run it:**
+
+```bash
+python -m data_ingestion.ingest
+```
+
+**Expected output:**
+
+```
+Looking for data at: /your/project/path/data_ingestion/../data/raw/nigeria_macro_data.csv
+File exists: True
+```
+
+The exact path will differ on your machine, but the important thing is `File exists: True`. If it says `False`, your CSV file is not in the right place -- go back and make sure `nigeria_macro_data.csv` is inside `data/raw/`.
+
+**What this code does:** `os.path.join()` builds file paths in a way that works on any operating system (it uses `/` on Mac/Linux and `\` on Windows). `os.path.dirname(__file__)` means "the folder this script lives in" -- so we start from `data_ingestion/` and go up one level (`..`) to the project root, then down into `data/raw/`. This is called a **relative path** and it means the project works no matter where on your computer you put it.
+
+---
+
+### Step 2: Basic Load Function
+
+Now **replace the last 3 lines** of your file (the `filepath = ...`, `print(...)`, and `print(...)` lines) with a proper function. Your file should now look like this:
+
+```python
+import os
+import pandas as pd
+
+REQUIRED_COLUMNS = ["date", "mpr", "inflation", "exchange_rate", "m2"]
+RAW_DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data", "raw")
+DEFAULT_FILE = "nigeria_macro_data.csv"
+
+
+def load_raw_data(filename=None):
+    """Load raw macroeconomic data from a CSV file."""
+
+    if filename is None:
+        filename = DEFAULT_FILE
+
+    filepath = os.path.join(RAW_DATA_DIR, filename)
+
+    if not os.path.exists(filepath):
+        raise FileNotFoundError(
+            f"Data file not found: {filepath}\n"
+            f"Make sure you have placed your CSV in the data/raw/ folder."
+        )
+
+    df = pd.read_csv(filepath)
+    print(f"Loaded {len(df)} rows")
+    print(f"Columns: {list(df.columns)}")
+    return df
+
+
+if __name__ == "__main__":
+    df = load_raw_data()
+    print(df.head())
+```
+
+**Run it:**
+
+```bash
+python -m data_ingestion.ingest
+```
+
+**Expected output:**
+
+```
+Loaded 300 rows
+Columns: ['date', 'mpr', 'inflation', 'exchange_rate', 'm2']
+         date   mpr  inflation  exchange_rate      m2
+0  2000-01-01  13.5       6.62          92.34  1070.5
+1  2000-02-01  13.5       6.93          92.55  1078.2
+2  2000-03-01  13.5       7.87          92.69  1090.6
+3  2000-04-01  13.5       8.13          93.05  1095.3
+4  2000-05-01  13.5       8.68          95.10  1100.7
+```
+
+**What this code does:** Three new concepts here.
+
+`def load_raw_data(filename=None)` defines a **function** -- a reusable block of code with a name. The `filename=None` part means the parameter is optional; if you call `load_raw_data()` without arguments, `filename` will be `None`, and we default to our standard CSV.
+
+`pd.read_csv(filepath)` is the pandas function that reads a CSV file and returns a DataFrame (the table structure you learned on Day 2). One line of code, but it opens the file, parses the commas, creates column headers from the first row, and puts all the data into a table.
+
+`if __name__ == "__main__":` is a Python pattern that means "only run this code when the script is executed directly." If another script does `from data_ingestion.ingest import load_raw_data`, the code under this block will NOT run. This lets the same file work as both a library (importable) and a script (runnable).
+
+---
+
+### Step 3: Add Column Validation
+
+Now we add a safety check. **Inside the `load_raw_data` function**, add these lines immediately after the `df = pd.read_csv(filepath)` line (and before the two `print` lines):
+
+```python
+    # Check required columns exist
+    missing_cols = set(REQUIRED_COLUMNS) - set(df.columns)
+    if missing_cols:
+        raise ValueError(
+            f"Missing required columns: {missing_cols}\n"
+            f"Your CSV has these columns: {list(df.columns)}\n"
+            f"Required columns are: {REQUIRED_COLUMNS}"
+        )
+```
+
+**Run it:**
+
+```bash
+python -m data_ingestion.ingest
+```
+
+**Expected output:** Exactly the same as Step 2 -- "Loaded 300 rows", same columns, same first 5 rows. No error appears because our CSV has all the required columns.
+
+**What this code does:** `set()` turns a list into a **set** -- a collection with no duplicates that supports mathematical operations. `set(REQUIRED_COLUMNS) - set(df.columns)` means "take everything in REQUIRED_COLUMNS and subtract everything in df.columns." Whatever is left over is missing. If nothing is left, the set is empty (which Python treats as `False`), so the `if` block does not run. If something IS left, we crash immediately with a clear error message telling you exactly which columns are missing and what your CSV actually has. This is called **schema validation** -- checking that the data matches the expected structure before doing anything else.
+
+---
+
+### Step 4: Add Date Parsing and Type Conversion
+
+Still inside `load_raw_data`, add these lines **after the column validation block** (after the `raise ValueError` block) and **before the two `print` lines**:
+
+```python
+    # Convert date column from text to actual datetime objects
+    df["date"] = pd.to_datetime(df["date"], format="%Y-%m-%d")
+
+    # Convert numeric columns to float, replacing bad values with NaN
+    for col in ["mpr", "inflation", "exchange_rate", "m2"]:
+        df[col] = pd.to_numeric(df[col], errors="coerce")
+```
+
+**Run it:**
+
+```bash
+python -m data_ingestion.ingest
+```
+
+**Expected output:** Same as before -- "Loaded 300 rows", same data. The change is invisible from the print output, but internally the `date` column is now a proper datetime object instead of plain text, and all numeric columns are guaranteed to be floats.
+
+**What this code does:** `pd.to_datetime()` converts text like `"2024-01-01"` into a Python datetime object that understands dates. The `format="%Y-%m-%d"` tells pandas the exact format to expect: four-digit year, two-digit month, two-digit day, separated by dashes. `pd.to_numeric()` converts values to numbers. The `errors="coerce"` parameter is the key part: if a value cannot be converted (for example, if someone typed "N/A" or "missing" in the CSV), instead of crashing the entire script, it quietly replaces that value with `NaN` (Not a Number). You can then detect and handle those missing values later in the cleaning step.
+
+---
+
+### Step 5: Add Sorting and Indexing
+
+Add these two lines **after the type conversion block** and **before the two `print` lines**:
+
+```python
+    # Sort by date (oldest first) and reset row numbers
+    df = df.sort_values("date").reset_index(drop=True)
+
+    # Make date the index (row label) instead of a regular column
+    df = df.set_index("date")
+```
+
+**Run it:**
+
+```bash
+python -m data_ingestion.ingest
+```
+
+**Expected output:**
+
+```
+Loaded 300 rows
+Columns: ['date', 'mpr', 'inflation', 'exchange_rate', 'm2']
+             mpr  inflation  exchange_rate      m2
+date
+2000-01-01  13.5       6.62          92.34  1070.5
+2000-02-01  13.5       6.93          92.55  1078.2
+2000-03-01  13.5       7.87          92.69  1090.6
+2000-04-01  13.5       8.13          93.05  1095.3
+2000-05-01  13.5       8.68          95.10  1100.7
+```
+
+Notice the difference from before: the `date` column has moved from being a regular column to being the **index** (the row labels on the left side). The numbered index (0, 1, 2...) is gone, replaced by dates.
+
+**What this code does:** `sort_values("date")` ensures the data is in chronological order, even if the CSV rows were scrambled. `reset_index(drop=True)` resets the row numbers to 0, 1, 2, etc. (the `drop=True` means "throw away the old index, don't save it as a column"). Then `set_index("date")` makes the date column the index. In time series analysis, the date uniquely identifies each observation, so it belongs as the index. This also enables powerful date-based selection later, like `df.loc["2024"]` to get all of 2024.
+
+---
+
+### Step 6: Add Summary Output
+
+Now **replace the two `print` lines** inside the function (the `print(f"Loaded {len(df)} rows")` and `print(f"Columns: ...")` lines) with this more informative summary. Place it right before the `return df` line:
+
+```python
+    # Print summary
+    print(f"Loaded {len(df)} observations")
+    print(f"Date range: {df.index.min().strftime('%Y-%m-%d')} to {df.index.max().strftime('%Y-%m-%d')}")
+    print(f"Missing values:\n{df.isnull().sum()}")
+```
+
+**Run it:**
+
+```bash
+python -m data_ingestion.ingest
+```
+
+**Expected output:**
+
+```
+Loaded 300 observations
+Date range: 2000-01-01 to 2024-12-01
+Missing values:
+mpr              0
+inflation        0
+exchange_rate    0
+m2               0
+dtype: int64
+             mpr  inflation  exchange_rate      m2
+date
+2000-01-01  13.5       6.62          92.34  1070.5
+2000-02-01  13.5       6.93          92.55  1078.2
+2000-03-01  13.5       7.87          92.69  1090.6
+2000-04-01  13.5       8.13          93.05  1095.3
+2000-05-01  13.5       8.68          95.10  1100.7
+```
+
+**What this code does:** `df.index.min()` and `df.index.max()` get the earliest and latest dates in the dataset. `.strftime('%Y-%m-%d')` formats them as readable strings. `df.isnull().sum()` counts how many missing values (NaN) exist in each column -- zero across the board means our data is complete. This summary runs every time you load data, so you always get a quick sanity check.
+
+---
+
+### Step 7: Upgrade the Main Block
+
+Finally, **replace the entire `if __name__ == "__main__":` block** at the bottom of the file with this:
+
+```python
+if __name__ == "__main__":
+    print("=" * 60)
+    print("NIGERIAN INFLATION PREDICTOR — DATA INGESTION")
+    print("=" * 60)
+
+    df = load_raw_data()
+
+    print(f"\nFirst 5 rows:")
+    print(df.head())
+
+    print(f"\nLast 5 rows:")
+    print(df.tail())
+
+    print(f"\nData types:")
+    print(df.dtypes)
+
+    print(f"\nShape: {df.shape[0]} rows, {df.shape[1]} columns")
+```
+
+**Run it:**
+
+```bash
+python -m data_ingestion.ingest
+```
+
+**Expected output:**
+
+```
+============================================================
+NIGERIAN INFLATION PREDICTOR — DATA INGESTION
+============================================================
+Loaded 300 observations
+Date range: 2000-01-01 to 2024-12-01
+Missing values:
+mpr              0
+inflation        0
+exchange_rate    0
+m2               0
+dtype: int64
+
+First 5 rows:
+             mpr  inflation  exchange_rate      m2
+date
+2000-01-01  13.5       6.62          92.34  1070.5
+2000-02-01  13.5       6.93          92.55  1078.2
+2000-03-01  13.5       7.87          92.69  1090.6
+2000-04-01  13.5       8.13          93.05  1095.3
+2000-05-01  13.5       8.68          95.10  1100.7
+
+Last 5 rows:
+              mpr  inflation  exchange_rate        m2
+date
+2024-08-01  26.75      32.15         1600.0  260335.5
+2024-09-01  27.25      32.70         1650.0  266250.3
+2024-10-01  27.25      33.88         1665.0  272325.6
+2024-11-01  27.50      34.60         1680.0  278565.4
+2024-12-01  27.50      34.80         1535.0  284975.8
+
+Data types:
+mpr              float64
+inflation        float64
+exchange_rate    float64
+m2               float64
+dtype: object
+
+Shape: 300 rows, 4 columns
+```
+
+**What this code does:** The upgraded main block gives you a complete picture of your data every time you run the script. The first 5 rows let you check the beginning of the series. The last 5 rows show the most recent data. `df.dtypes` confirms all columns are `float64` (proper numbers). `df.shape` confirms 300 rows and 4 columns (date is now the index, not a column, so it does not count).
+
+---
+
+## Part 3: Complete Final File
+
+Here is the complete `data_ingestion/ingest.py` file. Compare yours against this to make sure everything matches:
 
 ```python
 """
@@ -453,8 +774,7 @@ def load_raw_data(filename=None):
     # VALIDATION 3: Convert numeric columns to float
     # errors="coerce" means: if a value can't be converted (e.g., "N/A"),
     # replace it with NaN instead of crashing
-    numeric_cols = ["mpr", "inflation", "exchange_rate", "m2"]
-    for col in numeric_cols:
+    for col in ["mpr", "inflation", "exchange_rate", "m2"]:
         df[col] = pd.to_numeric(df[col], errors="coerce")
 
     # Sort by date (oldest first) and reset the row numbers
@@ -464,11 +784,10 @@ def load_raw_data(filename=None):
     # This is standard for time series data
     df = df.set_index("date")
 
-    # Print a summary so you can verify the data looks right
+    # Print summary
     print(f"Loaded {len(df)} observations")
     print(f"Date range: {df.index.min().strftime('%Y-%m-%d')} to {df.index.max().strftime('%Y-%m-%d')}")
-    print(f"\nMissing values per column:")
-    print(df.isnull().sum().to_string())
+    print(f"Missing values:\n{df.isnull().sum()}")
 
     return df
 
@@ -496,47 +815,11 @@ if __name__ == "__main__":
 
 ---
 
-## Step 4: Run the Ingestion Script
-
-```bash
-python -m data_ingestion.ingest
-```
-
-**Expected output:**
-```
-============================================================
-NIGERIAN INFLATION PREDICTOR — DATA INGESTION
-============================================================
-Loaded 300 observations
-Date range: 2000-01-01 to 2024-12-01
-
-Missing values per column:
-mpr              0
-inflation        0
-exchange_rate    0
-m2               0
-
-First 5 rows:
-             mpr  inflation  exchange_rate      m2
-date
-2000-01-01  13.5       6.62          92.34  1070.5
-2000-02-01  13.5       6.93          92.55  1078.2
-2000-03-01  13.5       7.87          92.69  1090.6
-2000-04-01  13.5       8.13          93.05  1095.3
-2000-05-01  13.5       8.68          95.10  1100.7
-...
-Shape: 300 rows, 4 columns
-```
-
-If you see this, your ingestion pipeline is working.
-
----
-
-## Step 5: Commit
+## Part 4: Commit
 
 ```bash
 git add data/raw/nigeria_macro_data.csv data_ingestion/ingest.py
-git commit -m "Day 3: Add dataset and data ingestion script with validation"
+git commit -m "Day 3: Add dataset and data ingestion script"
 ```
 
 ---
@@ -545,23 +828,25 @@ git commit -m "Day 3: Add dataset and data ingestion script with validation"
 
 | Problem | Solution |
 |---------|----------|
-| `FileNotFoundError: Data file not found` | Make sure `nigeria_macro_data.csv` is in `data/raw/`, not in the project root |
-| `ValueError: Missing required columns` | Check your CSV header row. Column names must be exactly: `date,mpr,inflation,exchange_rate,m2` |
-| `ParserError` or garbled output | Open your CSV in a text editor and check it's comma-separated, not semicolons or tabs |
-| Output shows NaN values | Check the CSV — some values might have text or special characters |
+| `FileNotFoundError: Data file not found` | Your CSV is not in the right place. It must be at `data/raw/nigeria_macro_data.csv` -- not in the project root, not in `data/`, not in `data_ingestion/`. Check the path |
+| `ValueError: Missing required columns` | Your CSV header row has different column names. They must be exactly `date,mpr,inflation,exchange_rate,m2` -- lowercase, no spaces, no extra columns. Open the CSV in a text editor (not Excel) and check the very first line |
+| `ParserError` or garbled output | Your CSV might be using semicolons or tabs instead of commas. Open it in a text editor and verify each value is separated by a comma |
+| Output shows NaN values in the "Missing values" summary | One or more cells in your CSV contain text that cannot be converted to a number (like "N/A", a dash, or an empty cell). Open the CSV and search for non-numeric values in the mpr, inflation, exchange_rate, and m2 columns |
+| `ModuleNotFoundError: No module named 'pandas'` | Your virtual environment is not activated. Run `source venv/bin/activate` (Mac/Linux) or `venv\Scripts\activate` (Windows) before running the script |
+| `ModuleNotFoundError: No module named 'data_ingestion'` | You are not in the project root directory. `cd` into `Nigerian_Inflation_Predictor/` before running the command. The `-m` flag expects to find a `data_ingestion/` folder in the current directory |
 
 ---
 
 ## Check Your Understanding
 
-1. **"Why validate columns instead of just reading the file?"**
-   > If someone gives you a CSV with different column names (e.g., "MPR" instead of "mpr"), the script will crash later with a confusing error. Validating upfront gives a clear error message at the point of failure.
+1. **"Why do we validate columns instead of just reading the file?"**
+   > If someone gives you a CSV with different column names (for example, "MPR" instead of "mpr", or "rate" instead of "exchange_rate"), the script will not crash at the loading step -- it will crash much later, deep inside a model or a plot, with a confusing `KeyError`. Validating upfront gives you a clear, immediate error message at the exact point of failure. This is a general principle: catch problems as early as possible.
 
 2. **"What does `errors='coerce'` do in `pd.to_numeric()`?"**
-   > It replaces values that can't be converted to numbers with NaN (missing). Without it, a single bad value like "N/A" in your CSV would crash the entire script.
+   > It replaces values that cannot be converted to numbers with NaN (Not a Number) instead of crashing the entire script. Without it, a single bad value like "N/A" or "-" in one cell of your 300-row CSV would stop everything. With `coerce`, the script keeps going and you can deal with the missing values later in the cleaning step (Day 4).
 
-3. **"Why set date as the index?"**
-   > In time series analysis, the date uniquely identifies each observation. Setting it as the index lets you select by date (e.g., `df.loc["2024-01-01"]`) and ensures the data is always in chronological order.
+3. **"Why set date as the index instead of keeping it as a regular column?"**
+   > In time series analysis, the date uniquely identifies each observation -- just like a primary key in a database. Setting it as the index lets you select data by date (for example, `df.loc["2024"]` returns all 12 months of 2024), align multiple time series automatically, and ensures operations like `.diff()` and `.shift()` work correctly in chronological order. Every time series library in Python expects the date to be the index.
 
 ---
 
@@ -569,9 +854,9 @@ git commit -m "Day 3: Add dataset and data ingestion script with validation"
 
 | Item | File | Purpose |
 |------|------|---------|
-| Dataset | `data/raw/nigeria_macro_data.csv` | 300 months of Nigerian macro data |
-| Ingestion script | `data_ingestion/ingest.py` | Loads, validates, and returns clean DataFrame |
+| Dataset | `data/raw/nigeria_macro_data.csv` | 300 months of Nigerian macro data (2000-2024) |
+| Ingestion script | `data_ingestion/ingest.py` | Loads, validates, and returns a clean DataFrame |
 
 **Packages installed today:** None (using pandas from Day 2)
 
-**Tomorrow (Day 4):** You'll build the data cleaning pipeline — handling missing values, enforcing monthly frequency, and validating value ranges.
+**Tomorrow (Day 4):** You will build the data cleaning pipeline -- handling missing values, enforcing monthly frequency, and validating value ranges.
