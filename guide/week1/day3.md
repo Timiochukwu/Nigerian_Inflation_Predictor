@@ -347,7 +347,6 @@ date,mpr,inflation,exchange_rate,m2
 
 Scroll through the data and see if you can spot each of these events. This is the kind of pattern recognition that your model will eventually learn to do mathematically.
 
----
 
 ## Part 2: Build `data_ingestion/ingest.py` -- Step by Step
 
@@ -355,11 +354,13 @@ We are going to build the ingestion script **one piece at a time**. After each s
 
 Do **not** skip ahead. Type each step, run it, and verify the output before moving on.
 
+At each step, we show you the **complete file**. Delete everything in `data_ingestion/ingest.py` and replace it with exactly what is shown. No guessing where to put things.
+
 ---
 
 ### Step 1: Imports and Constants
 
-Create the file `data_ingestion/ingest.py` and type in the following:
+Create the file `data_ingestion/ingest.py`. Your complete file should look like this:
 
 ```python
 import os
@@ -369,7 +370,7 @@ REQUIRED_COLUMNS = ["date", "mpr", "inflation", "exchange_rate", "m2"]
 RAW_DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data", "raw")
 DEFAULT_FILE = "nigeria_macro_data.csv"
 
-# Quick test — just print the path to make sure it's right
+# Quick test — just print the path to make sure it is right
 filepath = os.path.join(RAW_DATA_DIR, DEFAULT_FILE)
 print(f"Looking for data at: {filepath}")
 print(f"File exists: {os.path.exists(filepath)}")
@@ -396,7 +397,7 @@ The exact path will differ on your machine, but the important thing is `File exi
 
 ### Step 2: Basic Load Function
 
-Now **replace the last 3 lines** of your file (the `filepath = ...`, `print(...)`, and `print(...)` lines) with a proper function. Your file should now look like this:
+Delete everything in `data_ingestion/ingest.py` and replace it with this:
 
 ```python
 import os
@@ -463,9 +464,33 @@ Columns: ['date', 'mpr', 'inflation', 'exchange_rate', 'm2']
 
 ### Step 3: Add Column Validation
 
-Now we add a safety check. **Inside the `load_raw_data` function**, add these lines immediately after the `df = pd.read_csv(filepath)` line (and before the two `print` lines):
+Delete everything in `data_ingestion/ingest.py` and replace it with this:
 
 ```python
+import os
+import pandas as pd
+
+REQUIRED_COLUMNS = ["date", "mpr", "inflation", "exchange_rate", "m2"]
+RAW_DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data", "raw")
+DEFAULT_FILE = "nigeria_macro_data.csv"
+
+
+def load_raw_data(filename=None):
+    """Load raw macroeconomic data from a CSV file."""
+
+    if filename is None:
+        filename = DEFAULT_FILE
+
+    filepath = os.path.join(RAW_DATA_DIR, filename)
+
+    if not os.path.exists(filepath):
+        raise FileNotFoundError(
+            f"Data file not found: {filepath}\n"
+            f"Make sure you have placed your CSV in the data/raw/ folder."
+        )
+
+    df = pd.read_csv(filepath)
+
     # Check required columns exist
     missing_cols = set(REQUIRED_COLUMNS) - set(df.columns)
     if missing_cols:
@@ -474,6 +499,15 @@ Now we add a safety check. **Inside the `load_raw_data` function**, add these li
             f"Your CSV has these columns: {list(df.columns)}\n"
             f"Required columns are: {REQUIRED_COLUMNS}"
         )
+
+    print(f"Loaded {len(df)} rows")
+    print(f"Columns: {list(df.columns)}")
+    return df
+
+
+if __name__ == "__main__":
+    df = load_raw_data()
+    print(df.head())
 ```
 
 **Run it:**
@@ -484,21 +518,63 @@ python -m data_ingestion.ingest
 
 **Expected output:** Exactly the same as Step 2 -- "Loaded 300 rows", same columns, same first 5 rows. No error appears because our CSV has all the required columns.
 
-**What this code does:** `set()` turns a list into a **set** -- a collection with no duplicates that supports mathematical operations. `set(REQUIRED_COLUMNS) - set(df.columns)` means "take everything in REQUIRED_COLUMNS and subtract everything in df.columns." Whatever is left over is missing. If nothing is left, the set is empty (which Python treats as `False`), so the `if` block does not run. If something IS left, we crash immediately with a clear error message telling you exactly which columns are missing and what your CSV actually has. This is called **schema validation** -- checking that the data matches the expected structure before doing anything else.
+**What the new code does:** `set()` turns a list into a **set** -- a collection with no duplicates that supports mathematical operations. `set(REQUIRED_COLUMNS) - set(df.columns)` means "take everything in REQUIRED_COLUMNS and subtract everything in df.columns." Whatever is left over is missing. If nothing is left, the set is empty (which Python treats as `False`), so the `if` block does not run. If something IS left, we crash immediately with a clear error message telling you exactly which columns are missing and what your CSV actually has. This is called **schema validation** -- checking that the data matches the expected structure before doing anything else.
 
 ---
 
 ### Step 4: Add Date Parsing and Type Conversion
 
-Still inside `load_raw_data`, add these lines **after the column validation block** (after the `raise ValueError` block) and **before the two `print` lines**:
+Delete everything in `data_ingestion/ingest.py` and replace it with this:
 
 ```python
+import os
+import pandas as pd
+
+REQUIRED_COLUMNS = ["date", "mpr", "inflation", "exchange_rate", "m2"]
+RAW_DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data", "raw")
+DEFAULT_FILE = "nigeria_macro_data.csv"
+
+
+def load_raw_data(filename=None):
+    """Load raw macroeconomic data from a CSV file."""
+
+    if filename is None:
+        filename = DEFAULT_FILE
+
+    filepath = os.path.join(RAW_DATA_DIR, filename)
+
+    if not os.path.exists(filepath):
+        raise FileNotFoundError(
+            f"Data file not found: {filepath}\n"
+            f"Make sure you have placed your CSV in the data/raw/ folder."
+        )
+
+    df = pd.read_csv(filepath)
+
+    # Check required columns exist
+    missing_cols = set(REQUIRED_COLUMNS) - set(df.columns)
+    if missing_cols:
+        raise ValueError(
+            f"Missing required columns: {missing_cols}\n"
+            f"Your CSV has these columns: {list(df.columns)}\n"
+            f"Required columns are: {REQUIRED_COLUMNS}"
+        )
+
     # Convert date column from text to actual datetime objects
     df["date"] = pd.to_datetime(df["date"], format="%Y-%m-%d")
 
     # Convert numeric columns to float, replacing bad values with NaN
     for col in ["mpr", "inflation", "exchange_rate", "m2"]:
         df[col] = pd.to_numeric(df[col], errors="coerce")
+
+    print(f"Loaded {len(df)} rows")
+    print(f"Columns: {list(df.columns)}")
+    return df
+
+
+if __name__ == "__main__":
+    df = load_raw_data()
+    print(df.head())
 ```
 
 **Run it:**
@@ -509,20 +585,69 @@ python -m data_ingestion.ingest
 
 **Expected output:** Same as before -- "Loaded 300 rows", same data. The change is invisible from the print output, but internally the `date` column is now a proper datetime object instead of plain text, and all numeric columns are guaranteed to be floats.
 
-**What this code does:** `pd.to_datetime()` converts text like `"2024-01-01"` into a Python datetime object that understands dates. The `format="%Y-%m-%d"` tells pandas the exact format to expect: four-digit year, two-digit month, two-digit day, separated by dashes. `pd.to_numeric()` converts values to numbers. The `errors="coerce"` parameter is the key part: if a value cannot be converted (for example, if someone typed "N/A" or "missing" in the CSV), instead of crashing the entire script, it quietly replaces that value with `NaN` (Not a Number). You can then detect and handle those missing values later in the cleaning step.
+**What the new code does:** `pd.to_datetime()` converts text like `"2024-01-01"` into a Python datetime object that understands dates. The `format="%Y-%m-%d"` tells pandas the exact format to expect: four-digit year, two-digit month, two-digit day, separated by dashes. `pd.to_numeric()` converts values to numbers. The `errors="coerce"` parameter is the key part: if a value cannot be converted (for example, if someone typed "N/A" or "missing" in the CSV), instead of crashing the entire script, it quietly replaces that value with `NaN` (Not a Number). You can then detect and handle those missing values later in the cleaning step.
 
 ---
 
 ### Step 5: Add Sorting and Indexing
 
-Add these two lines **after the type conversion block** and **before the two `print` lines**:
+Delete everything in `data_ingestion/ingest.py` and replace it with this:
 
 ```python
+import os
+import pandas as pd
+
+REQUIRED_COLUMNS = ["date", "mpr", "inflation", "exchange_rate", "m2"]
+RAW_DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data", "raw")
+DEFAULT_FILE = "nigeria_macro_data.csv"
+
+
+def load_raw_data(filename=None):
+    """Load raw macroeconomic data from a CSV file."""
+
+    if filename is None:
+        filename = DEFAULT_FILE
+
+    filepath = os.path.join(RAW_DATA_DIR, filename)
+
+    if not os.path.exists(filepath):
+        raise FileNotFoundError(
+            f"Data file not found: {filepath}\n"
+            f"Make sure you have placed your CSV in the data/raw/ folder."
+        )
+
+    df = pd.read_csv(filepath)
+
+    # Check required columns exist
+    missing_cols = set(REQUIRED_COLUMNS) - set(df.columns)
+    if missing_cols:
+        raise ValueError(
+            f"Missing required columns: {missing_cols}\n"
+            f"Your CSV has these columns: {list(df.columns)}\n"
+            f"Required columns are: {REQUIRED_COLUMNS}"
+        )
+
+    # Convert date column from text to actual datetime objects
+    df["date"] = pd.to_datetime(df["date"], format="%Y-%m-%d")
+
+    # Convert numeric columns to float, replacing bad values with NaN
+    for col in ["mpr", "inflation", "exchange_rate", "m2"]:
+        df[col] = pd.to_numeric(df[col], errors="coerce")
+
     # Sort by date (oldest first) and reset row numbers
     df = df.sort_values("date").reset_index(drop=True)
 
     # Make date the index (row label) instead of a regular column
     df = df.set_index("date")
+
+    print(f"Loaded {len(df)} rows")
+    print(f"Columns: {list(df.columns)}")
+    return df
+
+
+if __name__ == "__main__":
+    df = load_raw_data()
+    print(df.head())
 ```
 
 **Run it:**
@@ -547,19 +672,72 @@ date
 
 Notice the difference from before: the `date` column has moved from being a regular column to being the **index** (the row labels on the left side). The numbered index (0, 1, 2...) is gone, replaced by dates.
 
-**What this code does:** `sort_values("date")` ensures the data is in chronological order, even if the CSV rows were scrambled. `reset_index(drop=True)` resets the row numbers to 0, 1, 2, etc. (the `drop=True` means "throw away the old index, don't save it as a column"). Then `set_index("date")` makes the date column the index. In time series analysis, the date uniquely identifies each observation, so it belongs as the index. This also enables powerful date-based selection later, like `df.loc["2024"]` to get all of 2024.
+**What the new code does:** `sort_values("date")` ensures the data is in chronological order, even if the CSV rows were scrambled. `reset_index(drop=True)` resets the row numbers to 0, 1, 2, etc. (the `drop=True` means "throw away the old index, don't save it as a column"). Then `set_index("date")` makes the date column the index. In time series analysis, the date uniquely identifies each observation, so it belongs as the index. This also enables powerful date-based selection later, like `df.loc["2024"]` to get all of 2024.
 
 ---
 
-### Step 6: Add Summary Output
+### Step 6: Better Summary Output
 
-Now **replace the two `print` lines** inside the function (the `print(f"Loaded {len(df)} rows")` and `print(f"Columns: ...")` lines) with this more informative summary. Place it right before the `return df` line:
+Delete everything in `data_ingestion/ingest.py` and replace it with this:
 
 ```python
+import os
+import pandas as pd
+
+REQUIRED_COLUMNS = ["date", "mpr", "inflation", "exchange_rate", "m2"]
+RAW_DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data", "raw")
+DEFAULT_FILE = "nigeria_macro_data.csv"
+
+
+def load_raw_data(filename=None):
+    """Load raw macroeconomic data from a CSV file."""
+
+    if filename is None:
+        filename = DEFAULT_FILE
+
+    filepath = os.path.join(RAW_DATA_DIR, filename)
+
+    if not os.path.exists(filepath):
+        raise FileNotFoundError(
+            f"Data file not found: {filepath}\n"
+            f"Make sure you have placed your CSV in the data/raw/ folder."
+        )
+
+    df = pd.read_csv(filepath)
+
+    # Check required columns exist
+    missing_cols = set(REQUIRED_COLUMNS) - set(df.columns)
+    if missing_cols:
+        raise ValueError(
+            f"Missing required columns: {missing_cols}\n"
+            f"Your CSV has these columns: {list(df.columns)}\n"
+            f"Required columns are: {REQUIRED_COLUMNS}"
+        )
+
+    # Convert date column from text to actual datetime objects
+    df["date"] = pd.to_datetime(df["date"], format="%Y-%m-%d")
+
+    # Convert numeric columns to float, replacing bad values with NaN
+    for col in ["mpr", "inflation", "exchange_rate", "m2"]:
+        df[col] = pd.to_numeric(df[col], errors="coerce")
+
+    # Sort by date (oldest first) and reset row numbers
+    df = df.sort_values("date").reset_index(drop=True)
+
+    # Make date the index (row label) instead of a regular column
+    df = df.set_index("date")
+
     # Print summary
     print(f"Loaded {len(df)} observations")
     print(f"Date range: {df.index.min().strftime('%Y-%m-%d')} to {df.index.max().strftime('%Y-%m-%d')}")
     print(f"Missing values:\n{df.isnull().sum()}")
+
+    return df
+
+
+if __name__ == "__main__":
+    df = load_raw_data()
+    print(df.head())
 ```
 
 **Run it:**
@@ -588,15 +766,80 @@ date
 2000-05-01  13.5       8.68          95.10  1100.7
 ```
 
-**What this code does:** `df.index.min()` and `df.index.max()` get the earliest and latest dates in the dataset. `.strftime('%Y-%m-%d')` formats them as readable strings. `df.isnull().sum()` counts how many missing values (NaN) exist in each column -- zero across the board means our data is complete. This summary runs every time you load data, so you always get a quick sanity check.
+**What changed:** The summary now shows the date range and a count of missing values per column. `df.index.min()` and `df.index.max()` get the earliest and latest dates in the dataset. `.strftime('%Y-%m-%d')` formats them as readable strings. `df.isnull().sum()` counts how many missing values (NaN) exist in each column -- zero across the board means our data is complete. This summary runs every time you load data, so you always get a quick sanity check.
 
 ---
 
-### Step 7: Upgrade the Main Block
+### Step 7: Upgrade the Main Block (Final Version)
 
-Finally, **replace the entire `if __name__ == "__main__":` block** at the bottom of the file with this:
+Delete everything in `data_ingestion/ingest.py` and replace it with this:
 
 ```python
+"""
+Data ingestion module for the Nigerian Inflation Predictor.
+
+This script loads raw CSV data from data/raw/, validates that it has
+the correct columns and data types, and returns a pandas DataFrame
+ready for cleaning and analysis.
+
+Usage:
+    python -m data_ingestion.ingest
+"""
+
+import os
+import pandas as pd
+
+REQUIRED_COLUMNS = ["date", "mpr", "inflation", "exchange_rate", "m2"]
+RAW_DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data", "raw")
+DEFAULT_FILE = "nigeria_macro_data.csv"
+
+
+def load_raw_data(filename=None):
+    """Load raw macroeconomic data from a CSV file."""
+
+    if filename is None:
+        filename = DEFAULT_FILE
+
+    filepath = os.path.join(RAW_DATA_DIR, filename)
+
+    if not os.path.exists(filepath):
+        raise FileNotFoundError(
+            f"Data file not found: {filepath}\n"
+            f"Make sure you have placed your CSV in the data/raw/ folder."
+        )
+
+    df = pd.read_csv(filepath)
+
+    # Check required columns exist
+    missing_cols = set(REQUIRED_COLUMNS) - set(df.columns)
+    if missing_cols:
+        raise ValueError(
+            f"Missing required columns: {missing_cols}\n"
+            f"Your CSV has these columns: {list(df.columns)}\n"
+            f"Required columns are: {REQUIRED_COLUMNS}"
+        )
+
+    # Convert date column from text to actual datetime objects
+    df["date"] = pd.to_datetime(df["date"], format="%Y-%m-%d")
+
+    # Convert numeric columns to float, replacing bad values with NaN
+    for col in ["mpr", "inflation", "exchange_rate", "m2"]:
+        df[col] = pd.to_numeric(df[col], errors="coerce")
+
+    # Sort by date (oldest first) and reset row numbers
+    df = df.sort_values("date").reset_index(drop=True)
+
+    # Make date the index (row label) instead of a regular column
+    df = df.set_index("date")
+
+    # Print summary
+    print(f"Loaded {len(df)} observations")
+    print(f"Date range: {df.index.min().strftime('%Y-%m-%d')} to {df.index.max().strftime('%Y-%m-%d')}")
+    print(f"Missing values:\n{df.isnull().sum()}")
+
+    return df
+
+
 if __name__ == "__main__":
     print("=" * 60)
     print("NIGERIAN INFLATION PREDICTOR — DATA INGESTION")
@@ -615,6 +858,8 @@ if __name__ == "__main__":
 
     print(f"\nShape: {df.shape[0]} rows, {df.shape[1]} columns")
 ```
+
+Step 7 above is your final complete file.
 
 **Run it:**
 
@@ -665,157 +910,11 @@ dtype: object
 Shape: 300 rows, 4 columns
 ```
 
-**What this code does:** The upgraded main block gives you a complete picture of your data every time you run the script. The first 5 rows let you check the beginning of the series. The last 5 rows show the most recent data. `df.dtypes` confirms all columns are `float64` (proper numbers). `df.shape` confirms 300 rows and 4 columns (date is now the index, not a column, so it does not count).
+**What the new code does:** The docstring at the top documents what the module does and how to run it. The upgraded main block gives you a complete picture of your data every time you run the script. The first 5 rows let you check the beginning of the series. The last 5 rows show the most recent data. `df.dtypes` confirms all columns are `float64` (proper numbers). `df.shape` confirms 300 rows and 4 columns (date is now the index, not a column, so it does not count).
 
 ---
 
-## Part 3: Complete Final File
-
-Here is the complete `data_ingestion/ingest.py` file. Compare yours against this to make sure everything matches:
-
-```python
-"""
-Data ingestion module for the Nigerian Inflation Predictor.
-
-This script loads raw CSV data from data/raw/, validates that it has
-the correct columns and data types, and returns a pandas DataFrame
-ready for cleaning and analysis.
-
-Usage:
-    python -m data_ingestion.ingest
-"""
-
-import os
-import pandas as pd
-
-
-# These are the EXACT column names your CSV must have.
-# If any are missing, the script will raise an error.
-REQUIRED_COLUMNS = ["date", "mpr", "inflation", "exchange_rate", "m2"]
-
-# Where raw data files live (relative to this script's location)
-RAW_DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data", "raw")
-
-# Default filename — change this if your CSV has a different name
-DEFAULT_FILE = "nigeria_macro_data.csv"
-
-
-def load_raw_data(filename=None):
-    """
-    Load raw macroeconomic data from a CSV file.
-
-    What this function does, step by step:
-    1. Finds the CSV file in data/raw/
-    2. Reads it into a pandas DataFrame
-    3. Checks that all required columns exist
-    4. Converts the date column to proper datetime format
-    5. Converts numeric columns to float (handling any text errors)
-    6. Sorts by date and sets date as the index
-    7. Reports basic info (number of rows, date range, missing values)
-
-    Parameters
-    ----------
-    filename : str, optional
-        Name of the CSV file. If not provided, uses 'nigeria_macro_data.csv'.
-
-    Returns
-    -------
-    pd.DataFrame
-        DataFrame with date index and four numeric columns:
-        mpr, inflation, exchange_rate, m2
-
-    Raises
-    ------
-    FileNotFoundError
-        If the CSV file doesn't exist.
-    ValueError
-        If required columns are missing.
-    """
-
-    # Use default filename if none provided
-    if filename is None:
-        filename = DEFAULT_FILE
-
-    # Build the full file path
-    # os.path.join() handles different OS path separators (/ vs \)
-    filepath = os.path.join(RAW_DATA_DIR, filename)
-
-    # Check the file exists before trying to read it
-    if not os.path.exists(filepath):
-        raise FileNotFoundError(
-            f"Data file not found: {filepath}\n"
-            f"Make sure you have placed your CSV in the data/raw/ folder."
-        )
-
-    # Read the CSV file into a DataFrame
-    # This is one line of code, but it does a lot:
-    # - Opens the file
-    # - Parses the comma-separated values
-    # - Creates column headers from the first row
-    # - Puts all data into a table
-    df = pd.read_csv(filepath)
-
-    # VALIDATION 1: Check that all required columns exist
-    # set() turns a list into a collection that supports subtraction
-    # If we subtract df.columns from REQUIRED_COLUMNS, anything left is missing
-    missing_cols = set(REQUIRED_COLUMNS) - set(df.columns)
-    if missing_cols:
-        raise ValueError(
-            f"Missing required columns: {missing_cols}\n"
-            f"Your CSV has these columns: {list(df.columns)}\n"
-            f"Required columns are: {REQUIRED_COLUMNS}"
-        )
-
-    # VALIDATION 2: Convert 'date' column to datetime
-    # pd.to_datetime() understands many date formats automatically
-    # format="%Y-%m-%d" means we expect "2024-01-01" format
-    df["date"] = pd.to_datetime(df["date"], format="%Y-%m-%d")
-
-    # VALIDATION 3: Convert numeric columns to float
-    # errors="coerce" means: if a value can't be converted (e.g., "N/A"),
-    # replace it with NaN instead of crashing
-    for col in ["mpr", "inflation", "exchange_rate", "m2"]:
-        df[col] = pd.to_numeric(df[col], errors="coerce")
-
-    # Sort by date (oldest first) and reset the row numbers
-    df = df.sort_values("date").reset_index(drop=True)
-
-    # Make 'date' the index (row labels) instead of a regular column
-    # This is standard for time series data
-    df = df.set_index("date")
-
-    # Print summary
-    print(f"Loaded {len(df)} observations")
-    print(f"Date range: {df.index.min().strftime('%Y-%m-%d')} to {df.index.max().strftime('%Y-%m-%d')}")
-    print(f"Missing values:\n{df.isnull().sum()}")
-
-    return df
-
-
-# This block runs ONLY when you execute this file directly
-# (not when another script imports from it)
-if __name__ == "__main__":
-    print("=" * 60)
-    print("NIGERIAN INFLATION PREDICTOR — DATA INGESTION")
-    print("=" * 60)
-
-    df = load_raw_data()
-
-    print(f"\nFirst 5 rows:")
-    print(df.head())
-
-    print(f"\nLast 5 rows:")
-    print(df.tail())
-
-    print(f"\nData types:")
-    print(df.dtypes)
-
-    print(f"\nShape: {df.shape[0]} rows, {df.shape[1]} columns")
-```
-
----
-
-## Part 4: Commit
+## Part 3: Commit
 
 ```bash
 git add data/raw/nigeria_macro_data.csv data_ingestion/ingest.py

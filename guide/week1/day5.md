@@ -63,25 +63,34 @@ We are NOT going to dump one giant script on you. Instead, we will build the fil
 
 Make sure you have a `data_processing/` folder with an `__init__.py` inside it (from Day 4). If not, create them now.
 
+
+## Building `data_processing/eda.py` — Step by Step
+
+At each step, we show you the **complete file**. Delete everything in `data_processing/eda.py` and replace it with exactly what is shown. No guessing where to put things.
+
+Make sure you have a `data_processing/` folder with an `__init__.py` inside it (from Day 4). If not, create them now.
+
 ---
 
 ### Build Step 1: Create the File with Imports and Data Loading
 
-Create a new file called `data_processing/eda.py` and type this in:
+Create a new file called `data_processing/eda.py`. Your complete file should look like this:
 
 ```python
 import os
 import pandas as pd
 import matplotlib
-matplotlib.use("Agg")  # Use non-interactive backend (no window pops up)
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 RESULTS_DIR = os.path.join(os.path.dirname(__file__), "..", "results")
 PROCESSED_DIR = os.path.join(os.path.dirname(__file__), "..", "data", "processed")
 
+
 def load_cleaned_data():
     filepath = os.path.join(PROCESSED_DIR, "cleaned_data.csv")
     return pd.read_csv(filepath, index_col="date", parse_dates=True)
+
 
 if __name__ == "__main__":
     df = load_cleaned_data()
@@ -89,7 +98,7 @@ if __name__ == "__main__":
     print(df.head())
 ```
 
-**Save the file.** Now run it:
+**Run it:**
 
 ```bash
 python -m data_processing.eda
@@ -102,7 +111,7 @@ Loaded 300 rows
               mpr  inflation  exchange_rate       m2
 date
 2000-01-01  13.5       6.62          92.34   1070.50
-2000-02-01  13.5       7.80          97.50   1085.40
+2000-02-01  13.5       6.93          92.55   1078.20
 ...
 ```
 
@@ -119,9 +128,24 @@ If that ran and printed your data, you are ready for the next piece.
 
 ### Build Step 2: Add the summary_statistics Function
 
-Open `data_processing/eda.py`. Add this function **ABOVE** the `if __name__` block (between `load_cleaned_data` and `if __name__`):
+Delete everything in `data_processing/eda.py` and replace it with this:
 
 ```python
+import os
+import pandas as pd
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+
+RESULTS_DIR = os.path.join(os.path.dirname(__file__), "..", "results")
+PROCESSED_DIR = os.path.join(os.path.dirname(__file__), "..", "data", "processed")
+
+
+def load_cleaned_data():
+    filepath = os.path.join(PROCESSED_DIR, "cleaned_data.csv")
+    return pd.read_csv(filepath, index_col="date", parse_dates=True)
+
+
 def summary_statistics(df):
     stats = df.describe().T
     stats["skewness"] = df.skew()
@@ -136,17 +160,14 @@ def summary_statistics(df):
     stats.round(4).to_csv(os.path.join(RESULTS_DIR, "summary_statistics.csv"))
     print(f"\nSaved to results/summary_statistics.csv")
     return stats
-```
 
-Now **update** the `if __name__` block at the bottom to call this new function:
 
-```python
 if __name__ == "__main__":
     df = load_cleaned_data()
     summary_statistics(df)
 ```
 
-**Save and run:**
+**Run it:**
 
 ```bash
 python -m data_processing.eda
@@ -185,9 +206,40 @@ You now have a CSV file in `results/` that you can paste into your thesis append
 
 We will not create all the plots at once. Let us start with a single plot — inflation — so you can see how matplotlib works.
 
-Add this function **ABOVE** the `if __name__` block:
+Delete everything in `data_processing/eda.py` and replace it with this:
 
 ```python
+import os
+import pandas as pd
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+
+RESULTS_DIR = os.path.join(os.path.dirname(__file__), "..", "results")
+PROCESSED_DIR = os.path.join(os.path.dirname(__file__), "..", "data", "processed")
+
+
+def load_cleaned_data():
+    filepath = os.path.join(PROCESSED_DIR, "cleaned_data.csv")
+    return pd.read_csv(filepath, index_col="date", parse_dates=True)
+
+
+def summary_statistics(df):
+    stats = df.describe().T
+    stats["skewness"] = df.skew()
+    stats["kurtosis"] = df.kurtosis()
+
+    print("=" * 70)
+    print("SUMMARY STATISTICS")
+    print("=" * 70)
+    print(stats.round(2).to_string())
+
+    os.makedirs(RESULTS_DIR, exist_ok=True)
+    stats.round(4).to_csv(os.path.join(RESULTS_DIR, "summary_statistics.csv"))
+    print(f"\nSaved to results/summary_statistics.csv")
+    return stats
+
+
 def plot_time_series(df):
     os.makedirs(RESULTS_DIR, exist_ok=True)
 
@@ -202,18 +254,15 @@ def plot_time_series(df):
     fig.savefig(os.path.join(RESULTS_DIR, "ts_inflation.png"), dpi=150)
     plt.close(fig)
     print("Saved: ts_inflation.png")
-```
 
-**Update** the `if __name__` block:
 
-```python
 if __name__ == "__main__":
     df = load_cleaned_data()
     summary_statistics(df)
     plot_time_series(df)
 ```
 
-**Save and run:**
+**Run it:**
 
 ```bash
 python -m data_processing.eda
@@ -245,9 +294,40 @@ Good. One plot works. Now let us make it plot all four variables.
 
 ### Build Step 4: Expand plot_time_series to Plot ALL Four Variables
 
-Now **REPLACE** the entire `plot_time_series` function with this expanded version:
+Delete everything in `data_processing/eda.py` and replace it with this:
 
 ```python
+import os
+import pandas as pd
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+
+RESULTS_DIR = os.path.join(os.path.dirname(__file__), "..", "results")
+PROCESSED_DIR = os.path.join(os.path.dirname(__file__), "..", "data", "processed")
+
+
+def load_cleaned_data():
+    filepath = os.path.join(PROCESSED_DIR, "cleaned_data.csv")
+    return pd.read_csv(filepath, index_col="date", parse_dates=True)
+
+
+def summary_statistics(df):
+    stats = df.describe().T
+    stats["skewness"] = df.skew()
+    stats["kurtosis"] = df.kurtosis()
+
+    print("=" * 70)
+    print("SUMMARY STATISTICS")
+    print("=" * 70)
+    print(stats.round(2).to_string())
+
+    os.makedirs(RESULTS_DIR, exist_ok=True)
+    stats.round(4).to_csv(os.path.join(RESULTS_DIR, "summary_statistics.csv"))
+    print(f"\nSaved to results/summary_statistics.csv")
+    return stats
+
+
 def plot_time_series(df):
     os.makedirs(RESULTS_DIR, exist_ok=True)
 
@@ -284,9 +364,15 @@ def plot_time_series(df):
     fig.savefig(os.path.join(RESULTS_DIR, "ts_panel_all_variables.png"), dpi=150, bbox_inches="tight")
     plt.close(fig)
     print("Saved: ts_panel_all_variables.png")
+
+
+if __name__ == "__main__":
+    df = load_cleaned_data()
+    summary_statistics(df)
+    plot_time_series(df)
 ```
 
-The `if __name__` block stays the same as before. **Save and run:**
+**Run it:**
 
 ```bash
 python -m data_processing.eda
@@ -312,99 +398,20 @@ Now you have 5 plot files in `results/`. Open each one and look at it.
 
 ---
 
-### Build Step 5: Add the Correlation Matrix
+### Build Step 5: Add the Correlation Matrix (Final Version)
 
-Add this function **ABOVE** the `if __name__` block:
-
-```python
-def plot_correlation_matrix(df):
-    os.makedirs(RESULTS_DIR, exist_ok=True)
-    corr = df.corr()
-
-    print("\nCorrelation Matrix:")
-    print(corr.round(3).to_string())
-
-    fig, ax = plt.subplots(figsize=(8, 6))
-    im = ax.imshow(corr.values, cmap="RdBu_r", vmin=-1, vmax=1)
-    ax.set_xticks(range(len(corr.columns)))
-    ax.set_yticks(range(len(corr.columns)))
-    ax.set_xticklabels(corr.columns, rotation=45, ha="right")
-    ax.set_yticklabels(corr.columns)
-    for i in range(len(corr)):
-        for j in range(len(corr)):
-            ax.text(j, i, f"{corr.iloc[i, j]:.2f}", ha="center", va="center",
-                    fontsize=12, color="white" if abs(corr.iloc[i, j]) > 0.5 else "black")
-    plt.colorbar(im)
-    ax.set_title("Correlation Matrix", fontweight="bold")
-    plt.tight_layout()
-    fig.savefig(os.path.join(RESULTS_DIR, "correlation_matrix.png"), dpi=150)
-    plt.close(fig)
-    print("Saved: correlation_matrix.png")
-```
-
-Now **update** the `if __name__` block one final time:
-
-```python
-if __name__ == "__main__":
-    df = load_cleaned_data()
-    summary_statistics(df)
-    plot_time_series(df)
-    plot_correlation_matrix(df)
-    print("\nEDA complete.")
-```
-
-**Save and run:**
-
-```bash
-python -m data_processing.eda
-```
-
-**What you should see** (at the end, after all the previous output):
-
-```
-Correlation Matrix:
-                  mpr  inflation  exchange_rate      m2
-mpr            1.000      0.XXX          0.XXX   0.XXX
-inflation      0.XXX      1.000          0.XXX   0.XXX
-exchange_rate  0.XXX      0.XXX          1.000   0.XXX
-m2             0.XXX      0.XXX          0.XXX   1.000
-Saved: correlation_matrix.png
-
-EDA complete.
-```
-
-(The `0.XXX` values will be actual correlation numbers when you run it.)
-
-Open `results/correlation_matrix.png` and look at it.
-
-**How the correlation code works:**
-
-- `df.corr()` computes the Pearson correlation coefficient between every pair of columns. The result is a square matrix. The diagonal is always 1.0 (every variable is perfectly correlated with itself).
-- `ax.imshow(corr.values, cmap="RdBu_r", vmin=-1, vmax=1)` displays the matrix as a coloured grid. `cmap="RdBu_r"` means red = positive correlation, blue = negative, white = near zero. `vmin=-1, vmax=1` fixes the colour scale so the colours always mean the same thing.
-- The nested `for i / for j` loop places the actual numbers inside each cell of the heatmap. `color="white" if abs(corr.iloc[i, j]) > 0.5 else "black"` makes the text readable: white text on dark cells, black text on light cells.
-- `plt.colorbar(im)` adds the colour legend on the right side.
-
-**What correlation means:**
-
-- **+1.0** = the two variables move in the same direction perfectly
-- **-1.0** = the two variables move in opposite directions perfectly
-- **0.0** = no linear relationship at all
-
----
-
-## The Complete Final File
-
-After all five build steps, your `data_processing/eda.py` should look exactly like this:
+Delete everything in `data_processing/eda.py` and replace it with this:
 
 ```python
 import os
 import pandas as pd
 import matplotlib
-matplotlib.use("Agg")  # Use non-interactive backend (no window pops up)
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 RESULTS_DIR = os.path.join(os.path.dirname(__file__), "..", "results")
 PROCESSED_DIR = os.path.join(os.path.dirname(__file__), "..", "data", "processed")
+
 
 def load_cleaned_data():
     filepath = os.path.join(PROCESSED_DIR, "cleaned_data.csv")
@@ -498,7 +505,53 @@ if __name__ == "__main__":
     print("\nEDA complete.")
 ```
 
-Compare your file against this. If something is different, fix it now before moving on.
+Build Step 5 above is your final complete file.
+
+**Run it:**
+
+```bash
+python -m data_processing.eda
+```
+
+**What you should see** (at the end, after all the previous output):
+
+```
+Correlation Matrix:
+                  mpr  inflation  exchange_rate      m2
+mpr            1.000      0.XXX          0.XXX   0.XXX
+inflation      0.XXX      1.000          0.XXX   0.XXX
+exchange_rate  0.XXX      0.XXX          1.000   0.XXX
+m2             0.XXX      0.XXX          0.XXX   1.000
+Saved: correlation_matrix.png
+
+EDA complete.
+```
+
+(The `0.XXX` values will be actual correlation numbers when you run it.)
+
+Open `results/correlation_matrix.png` and look at it.
+
+**How the correlation code works:**
+
+- `df.corr()` computes the Pearson correlation coefficient between every pair of columns. The result is a square matrix. The diagonal is always 1.0 (every variable is perfectly correlated with itself).
+- `ax.imshow(corr.values, cmap="RdBu_r", vmin=-1, vmax=1)` displays the matrix as a coloured grid. `cmap="RdBu_r"` means red = positive correlation, blue = negative, white = near zero. `vmin=-1, vmax=1` fixes the colour scale so the colours always mean the same thing.
+- The nested `for i / for j` loop places the actual numbers inside each cell of the heatmap. `color="white" if abs(corr.iloc[i, j]) > 0.5 else "black"` makes the text readable: white text on dark cells, black text on light cells.
+- `plt.colorbar(im)` adds the colour legend on the right side.
+
+**What correlation means:**
+
+- **+1.0** = the two variables move in the same direction perfectly
+- **-1.0** = the two variables move in opposite directions perfectly
+- **0.0** = no linear relationship at all
+
+---
+
+## Step 2: Commit
+
+```bash
+git add data_processing/eda.py requirements.txt
+git commit -m "Day 5: Add EDA script with summary statistics, time series plots, and correlation matrix"
+```
 
 ---
 

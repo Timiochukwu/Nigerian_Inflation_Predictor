@@ -95,7 +95,7 @@ Do not skip ahead. Do not copy the whole thing at once. The learning happens whe
 
 Create a new file at this path: `guide/week1/day2_practice.py`
 
-Write exactly these lines in it:
+Delete everything in `guide/week1/day2_practice.py` and replace it with this:
 
 ```python
 import pandas as pd
@@ -141,9 +141,21 @@ Shape: (3, 3)
 
 ### Step 2: Select a Column and Compute an Average
 
-Open `guide/week1/day2_practice.py` again. Add these lines **to the very bottom** of the file, below what you already have:
+Delete everything in `guide/week1/day2_practice.py` and replace it with this:
 
 ```python
+import pandas as pd
+
+data = {
+    "date": ["2024-01-01", "2024-02-01", "2024-03-01"],
+    "mpr": [18.75, 22.75, 24.75],
+    "inflation": [29.90, 31.70, 33.20],
+}
+
+df = pd.DataFrame(data)
+print(df)
+print(f"\nShape: {df.shape}")
+
 print("\n--- Selecting columns ---")
 print(df["inflation"])
 print(f"\nAverage inflation: {df['inflation'].mean():.2f}%")
@@ -179,9 +191,25 @@ Average inflation: 31.60%
 
 ### Step 3: Convert Dates and Set the Index
 
-Add these lines **to the very bottom** of `guide/week1/day2_practice.py`:
+Delete everything in `guide/week1/day2_practice.py` and replace it with this:
 
 ```python
+import pandas as pd
+
+data = {
+    "date": ["2024-01-01", "2024-02-01", "2024-03-01"],
+    "mpr": [18.75, 22.75, 24.75],
+    "inflation": [29.90, 31.70, 33.20],
+}
+
+df = pd.DataFrame(data)
+print(df)
+print(f"\nShape: {df.shape}")
+
+print("\n--- Selecting columns ---")
+print(df["inflation"])
+print(f"\nAverage inflation: {df['inflation'].mean():.2f}%")
+
 print("\n--- Converting dates ---")
 df["date"] = pd.to_datetime(df["date"])
 df = df.set_index("date")
@@ -220,9 +248,31 @@ Data type of index: <class 'pandas.core.indexes.datetimes.DatetimeIndex'>
 
 ### Step 4: First Differencing
 
-Add these lines **to the very bottom** of `guide/week1/day2_practice.py`:
+Delete everything in `guide/week1/day2_practice.py` and replace it with this:
 
 ```python
+import pandas as pd
+
+data = {
+    "date": ["2024-01-01", "2024-02-01", "2024-03-01"],
+    "mpr": [18.75, 22.75, 24.75],
+    "inflation": [29.90, 31.70, 33.20],
+}
+
+df = pd.DataFrame(data)
+print(df)
+print(f"\nShape: {df.shape}")
+
+print("\n--- Selecting columns ---")
+print(df["inflation"])
+print(f"\nAverage inflation: {df['inflation'].mean():.2f}%")
+
+print("\n--- Converting dates ---")
+df["date"] = pd.to_datetime(df["date"])
+df = df.set_index("date")
+print(df)
+print(f"\nData type of index: {type(df.index)}")
+
 print("\n--- First differencing ---")
 print(df["inflation"].diff())
 print("\nThe first value is NaN because there is no previous month to subtract from.")
@@ -262,9 +312,35 @@ The first value is NaN because there is no previous month to subtract from.
 
 ### Step 5: Missing Values
 
-Add these lines **to the very bottom** of `guide/week1/day2_practice.py`:
+Delete everything in `guide/week1/day2_practice.py` and replace it with this:
 
 ```python
+import pandas as pd
+
+data = {
+    "date": ["2024-01-01", "2024-02-01", "2024-03-01"],
+    "mpr": [18.75, 22.75, 24.75],
+    "inflation": [29.90, 31.70, 33.20],
+}
+
+df = pd.DataFrame(data)
+print(df)
+print(f"\nShape: {df.shape}")
+
+print("\n--- Selecting columns ---")
+print(df["inflation"])
+print(f"\nAverage inflation: {df['inflation'].mean():.2f}%")
+
+print("\n--- Converting dates ---")
+df["date"] = pd.to_datetime(df["date"])
+df = df.set_index("date")
+print(df)
+print(f"\nData type of index: {type(df.index)}")
+
+print("\n--- First differencing ---")
+print(df["inflation"].diff())
+print("\nThe first value is NaN because there is no previous month to subtract from.")
+
 print("\n--- Missing values ---")
 df.loc["2024-02-01", "mpr"] = None
 print(df)
@@ -315,48 +391,7 @@ date
 
 ### Step 6: A Preview of Reading CSV Files
 
-Add these lines **to the very bottom** of `guide/week1/day2_practice.py`:
-
-```python
-print("\n--- Reading from CSV ---")
-print("In this project, we load data like this:")
-print('  df = pd.read_csv("data/raw/nigeria_macro_data.csv")')
-print('  df = pd.read_csv("path", index_col="date", parse_dates=True)')
-print("\nYou will build this for real tomorrow in data_ingestion/ingest.py")
-```
-
-Save the file.
-
-**Run it:**
-
-```bash
-python guide/week1/day2_practice.py
-```
-
-**What you should see** (new output at the bottom):
-
-```
---- Reading from CSV ---
-In this project, we load data like this:
-  df = pd.read_csv("data/raw/nigeria_macro_data.csv")
-  df = pd.read_csv("path", index_col="date", parse_dates=True)
-
-You will build this for real tomorrow in data_ingestion/ingest.py
-```
-
-**What just happened:**
-
-- This step does not run any actual pandas code on data. It simply prints the syntax you will use tomorrow.
-- `pd.read_csv("path")` loads a CSV file from disk into a DataFrame. This is how real data enters your program.
-- `index_col="date"` tells pandas to use the "date" column as the row index (instead of the default 0, 1, 2, ...).
-- `parse_dates=True` tells pandas to automatically convert date strings into datetime objects.
-- Tomorrow on Day 3, you will create the actual CSV file and write the ingestion script. Today was about learning what a DataFrame is and how to work with one.
-
----
-
-### Complete File (Verify Yours Matches)
-
-After all 6 steps, your `guide/week1/day2_practice.py` should look exactly like this:
+Delete everything in `guide/week1/day2_practice.py` and replace it with this:
 
 ```python
 import pandas as pd
@@ -399,11 +434,36 @@ print('  df = pd.read_csv("path", index_col="date", parse_dates=True)')
 print("\nYou will build this for real tomorrow in data_ingestion/ingest.py")
 ```
 
-If your file does not match, delete it and retype it from this complete version. Then run it one final time to confirm everything works:
+Save the file.
+
+**Run it:**
 
 ```bash
 python guide/week1/day2_practice.py
 ```
+
+**What you should see** (new output at the bottom):
+
+```
+--- Reading from CSV ---
+In this project, we load data like this:
+  df = pd.read_csv("data/raw/nigeria_macro_data.csv")
+  df = pd.read_csv("path", index_col="date", parse_dates=True)
+
+You will build this for real tomorrow in data_ingestion/ingest.py
+```
+
+**What just happened:**
+
+- This step does not run any actual pandas code on data. It simply prints the syntax you will use tomorrow.
+- `pd.read_csv("path")` loads a CSV file from disk into a DataFrame. This is how real data enters your program.
+- `index_col="date"` tells pandas to use the "date" column as the row index (instead of the default 0, 1, 2, ...).
+- `parse_dates=True` tells pandas to automatically convert date strings into datetime objects.
+- Tomorrow on Day 3, you will create the actual CSV file and write the ingestion script. Today was about learning what a DataFrame is and how to work with one.
+
+---
+
+Step 6 above is your final complete file. If your output matches the expected output shown above, you are done.
 
 ---
 
