@@ -1,122 +1,134 @@
-# Week 2, Day 8 — Cointegration: Do These Variables Share a Long-Run Relationship?
+# Week 2, Day 8 -- Engle-Granger Cointegration Test
 
 ## What You'll Learn Today
 
-- What cointegration means and why it matters for your model
-- How two non-stationary series can still have a meaningful long-run relationship
-- How to run the Engle-Granger pairwise cointegration test
-- How to interpret cointegration results in the context of the Nigerian economy
-- Why pairwise testing is only the first step (Johansen comes tomorrow)
+- What cointegration is and why it matters for modelling Nigerian macroeconomic data
+- The Engle-Granger two-step procedure for testing whether two I(1) series share a long-run equilibrium
+- How to test all 6 pairwise combinations of your 4 variables and interpret every result
 
 ## Why This Matters
 
-On Days 6-7 you established that all four of your variables — MPR, inflation, exchange_rate, and M2 — are I(1). They are non-stationary. They wander without a fixed mean, and if you difference them once, they become stationary.
+On Days 6-7 you established that all four variables -- mpr, infl, exo, and tbr -- are integrated of order one, I(1). Each one wanders over time without returning to a fixed mean. You also learned that regressing one I(1) variable on another I(1) variable can produce spurious results: high R-squared, significant coefficients, but no genuine economic relationship. The regression is just picking up the fact that both series trend in the same direction.
 
-This creates a problem. If you run an ordinary least squares (OLS) regression of one I(1) variable on another I(1) variable, you can get results that look highly significant — high R-squared, low p-values — but are completely meaningless. This is the **spurious regression** problem, first demonstrated by Granger and Newbold (1974). Two completely unrelated series that both trend upward will appear to be related simply because they both trend upward. The regression is picking up the common trend, not a genuine economic relationship.
+So here is the critical question for Day 8: **Are any of these wandering variables actually connected to each other in the long run?** Or would regressing them together just give you garbage?
 
-So here is the question Day 8 answers: **Are our I(1) variables genuinely connected to each other, or would regressing them together just give us garbage?**
-
-The answer comes from cointegration testing. If two I(1) series are cointegrated, their relationship is real — not spurious. You can safely model them together in levels. If they are NOT cointegrated, you must work with their differences instead. This decision shapes your entire modelling strategy for the rest of the project.
+Cointegration testing answers this question. If two I(1) series are cointegrated, their relationship is genuine and you can safely model them together in levels. If they are NOT cointegrated, you must work with their differences instead or risk spurious results. This decision shapes your entire modelling strategy for the rest of the project.
 
 ---
 
 ## No New Packages
 
-You do not need to install anything new today. The `statsmodels` package you installed on Day 6 already includes the `coint` function for the Engle-Granger cointegration test. Everything you need is already in your environment.
+You do not need to install anything new today. The `coint` function for the Engle-Granger test is included in `statsmodels`, which you installed on Day 6. Everything you need is already in your environment.
 
 ---
 
 ## Theory: What Is Cointegration?
 
-This is one of the most important concepts in time series econometrics, and it is also one of the hardest to grasp on first encounter. Read this section carefully. Read it twice if you need to. It is worth the time.
+This is one of the most important concepts in time series econometrics. If you only understand one idea from this entire project, make it this one. Read this section slowly. Read it twice if you need to.
 
-### The Problem: Spurious Regression with I(1) Variables
+### The Problem You Face
 
-You proved on Days 6-7 that all four variables are I(1) — they are non-stationary in levels and stationary in first differences. This means each variable wanders over time without reverting to a fixed mean. MPR drifts, inflation drifts, the exchange rate drifts, M2 drifts.
+You have four variables that are all I(1). They all wander. MPR drifts up and down as the CBN adjusts policy. Inflation drifts as supply shocks and demand pressures come and go. The exchange rate drifts as oil revenues fluctuate and the CBN intervenes in the forex market. The Treasury Bill Rate drifts as the government borrows more or less.
 
-Now imagine you regress inflation on the exchange rate using OLS. Both series trend upward over the 2000-2024 period. OLS will find a "relationship" — it will say the exchange rate is a statistically significant predictor of inflation with a high R-squared. But this could be completely meaningless. OLS is just picking up the fact that both series went up. If you regressed inflation on the number of mobile phone subscribers in Nigeria (which also went up over this period), you would get an equally "significant" result. That does not mean mobile phones cause inflation.
+If you naively regress inflation on the exchange rate using OLS, both series trend upward over the 2000-2024 period. OLS will report a "significant" relationship with a high R-squared. But this could be completely meaningless. OLS is just detecting that both series went up. You would get an equally "significant" result if you regressed inflation on the number of registered cars in Lagos (which also went up). That does not mean cars cause inflation.
 
-This is why Granger and Newbold warned econometricians: **never regress one I(1) series on another I(1) series without first checking for cointegration.** If the series are not cointegrated, the regression is spurious and its results cannot be trusted.
+This is the spurious regression problem. You cannot trust OLS results when both variables are I(1) -- unless you first confirm that the two series are cointegrated.
 
 ### The Key Insight: Engle and Granger (1987)
 
-Robert Engle and Clive Granger made a discovery that earned them the Nobel Prize in Economics (2003). They showed that even though two I(1) series individually wander without a fixed mean, there might exist a **linear combination** of them that IS stationary.
+Robert Engle and Clive Granger made a discovery that earned them the 2003 Nobel Prize in Economics. They showed that even though two I(1) series individually wander without a fixed mean, there might exist a **linear combination** of them that IS stationary.
 
-What does that mean in practice? Suppose inflation and MPR are both I(1). Individually, they wander. But suppose there exists some constant `b` such that:
+What does that mean in practice? Suppose inflation (infl) and the Monetary Policy Rate (mpr) are both I(1). Individually, they wander. But suppose there exists some constant `b` such that:
 
 ```
-inflation - b * MPR = stationary residual
+infl - b * mpr = stationary residual
 ```
 
-If this residual (the gap between inflation and `b * MPR`) is stationary — meaning it fluctuates around a fixed mean and always reverts back — then inflation and MPR are **cointegrated**. They share a long-run equilibrium. They may diverge from each other in the short run, but they always come back together.
+If this residual -- the gap between actual inflation and `b * mpr` -- is stationary (meaning it fluctuates around a fixed mean and always reverts back), then infl and mpr are **cointegrated**. They share a long-run equilibrium. They may drift apart in the short run, but economic forces always pull them back together.
 
-This is a profound result. It means that even though neither series has a fixed mean on its own, the GAP between them does. The relationship between them is real, not spurious.
+### The Drunk and the Dog Analogy
 
-### The Drunk and the Dog: An Analogy
+Think of a drunk person walking their dog on a leash at night. The drunk staggers randomly -- left, right, forward, back. The drunk's path is non-stationary (a random walk). The dog also wanders -- sniffing lampposts, chasing shadows. The dog's path is also non-stationary.
 
-Think of a drunk person walking their dog on a leash. The drunk staggers randomly — left, right, forward, back. Their path is non-stationary (a random walk). The dog also wanders — sniffing here, running there. The dog's path is also non-stationary.
+But here is the crucial point: the drunk and the dog are connected by a leash. They can never get too far apart. If the dog runs too far ahead, the leash yanks it back. If the drunk staggers sideways, the leash drags the dog along.
 
-But here is the crucial point: the drunk and the dog are connected by a leash. They can never get too far apart. If the dog runs ahead, the leash pulls it back. If the drunk staggers too far left, the leash drags the dog along.
+The **distance between the drunk and the dog** is stationary. It fluctuates -- sometimes the dog is ahead, sometimes behind -- but it always reverts to roughly the length of the leash. It has a fixed mean.
 
-The **distance between the drunk and the dog** is stationary. It fluctuates — sometimes the dog is ahead, sometimes behind — but it always reverts to the length of the leash. It has a fixed mean.
+The drunk and the dog are cointegrated. Each individual path is non-stationary, but they share a long-run equilibrium defined by the leash. Deviations from that equilibrium are temporary.
 
-The drunk and the dog are cointegrated. Their individual paths are non-stationary, but they share a long-run equilibrium (defined by the leash). The "error" (the distance between them) is a stationary, mean-reverting process.
+Now remove the leash. The drunk and the dog wander independently. Sometimes they happen to be close, sometimes far apart, but there is no force pulling them back together. The distance between them can drift forever without reverting. Without the leash, they are NOT cointegrated.
 
-Now remove the leash. The drunk and the dog wander independently. Sometimes they happen to be close, sometimes far apart, but there is no force pulling them back together. The distance between them is non-stationary — it can drift forever. Without the leash, they are NOT cointegrated.
+### Nigerian Example: MPR and TBR
 
-### Economic Meaning for Nigeria
+The best Nigerian example of cointegration is the relationship between the Monetary Policy Rate (mpr) and the Treasury Bill Rate (tbr).
 
-**If MPR and inflation are cointegrated**, it means the Central Bank of Nigeria's policy rate and the inflation rate share a long-run equilibrium. When inflation rises above the equilibrium level, the CBN eventually raises the MPR to bring it back. When inflation falls below equilibrium, the CBN eventually cuts the MPR. They may diverge in the short run — the CBN may be slow to respond, or inflation may overshoot — but there is an invisible leash connecting them. The CBN's policy is systematic enough to maintain a long-run link.
+The MPR is the benchmark rate set by the CBN's Monetary Policy Committee. The TBR is the yield on Treasury Bills at auction. In theory, when the CBN raises the MPR, Treasury Bill rates should also rise because:
 
-This is exactly what you would hope to find if the CBN is doing its job. A central bank that targets inflation should have a cointegrating relationship between its policy rate and the inflation rate. If they are NOT cointegrated, it suggests the CBN's response to inflation has been too inconsistent, too delayed, or too disrupted by political interference to create a stable long-run equilibrium.
+1. The MPR signals the CBN's desired interest rate level for the economy.
+2. Banks use the MPR as a reference point when bidding at T-bill auctions.
+3. If the MPR goes up but T-bill rates stay low, banks would prefer to deposit money at the CBN (at the MPR-linked Standing Deposit Facility) rather than buy T-bills. This reduces demand for T-bills, pushing their yields up until they align with the new MPR level.
 
-**If exchange_rate and M2 are cointegrated**, it means money supply growth and Naira depreciation share a long-run link. This is consistent with the quantity theory of money applied to the exchange rate: when the CBN prints more Naira (M2 grows) without a corresponding increase in dollar-earning capacity, the Naira loses value. The exchange rate and M2 are connected by a theoretical leash — the fundamental relationship between money supply and currency value.
+So the MPR and TBR are connected by an invisible leash -- the CBN's monetary policy transmission mechanism. Each rate can wander on its own (both are I(1)), but the **spread** between them stays bounded. When the spread gets too wide, market forces pull it back.
 
-**If exchange_rate and inflation are cointegrated**, it means exchange rate depreciation and consumer price inflation share a long-run equilibrium — the exchange rate pass-through is a permanent, structural feature of the Nigerian economy, not just a short-run phenomenon.
+If you run the Engle-Granger test and find that mpr and tbr are cointegrated, it confirms that the CBN's policy rate transmission is working -- the MPR genuinely anchors T-bill rates in the long run. If they are NOT cointegrated, it suggests transmission is broken, perhaps because of excess liquidity in the banking system, government borrowing that distorts T-bill pricing, or other structural problems.
 
-### The Engle-Granger Cointegration Test
+### If Cointegrated: What It Means
 
-The Engle-Granger test is the simplest and most intuitive cointegration test. It works in four steps:
+If two variables are cointegrated, three things follow:
 
-1. **Regress Y on X using OLS in levels.** For example, regress inflation on MPR. This gives you a fitted line and a set of residuals (the differences between actual inflation and what the OLS line predicts).
+1. **The relationship is genuine, not spurious.** OLS in levels gives valid -- in fact, "super-consistent" -- estimates of the long-run relationship.
+2. **Deviations are temporary.** When the variables drift apart from their equilibrium, error correction forces pull them back. This is the basis for the Error Correction Model (ECM) you will build later.
+3. **You can model in levels.** You do not have to throw away information by differencing. The ARDL bounds test and VECM frameworks both exploit cointegration to capture long-run AND short-run dynamics.
 
-2. **Extract the residuals.** These residuals represent the "gap" between the two series after accounting for their linear relationship. If the series are cointegrated, this gap should be stationary.
+### If NOT Cointegrated: What It Means
 
-3. **Test the residuals for stationarity using the ADF test.** Run an Augmented Dickey-Fuller test on the residuals. If the residuals are stationary (have no unit root), the gap reverts to a mean — the series are cointegrated.
+If two variables are NOT cointegrated, the apparent relationship between them may be spurious. You should NOT model them together in levels using OLS. Instead, you must either:
 
-4. **Make the decision:**
-   - If the residuals are stationary: Y and X **are cointegrated**. Their relationship is genuine, not spurious. OLS in levels gives valid (in fact, "super-consistent") estimates.
-   - If the residuals are non-stationary: Y and X are **NOT cointegrated**. Their apparent relationship may be spurious. You should not model them together in levels.
+- Work with first differences (model the changes, not the levels), or
+- Use a framework like ARDL bounds testing that does not require pre-testing for cointegration.
 
-The good news is that `statsmodels` wraps all four steps into a single function called `coint()`. You pass it two series, and it returns a test statistic, a p-value, and critical values.
+### The Engle-Granger Two-Step Procedure
+
+The Engle-Granger test is the simplest cointegration test. It works in two steps:
+
+**Step 1 -- Regress Y on X using OLS in levels.** For example, regress infl on mpr. This gives you a fitted line and a set of residuals (the differences between actual infl and what the OLS line predicts).
+
+**Step 2 -- Test the residuals for stationarity using the ADF test.** If the residuals are stationary (no unit root), the gap between the two series reverts to a mean. The series are cointegrated. If the residuals are non-stationary, the gap can drift forever. The series are NOT cointegrated.
+
+The `statsmodels` library wraps both steps into a single function called `coint()`. You pass it two series, and it returns a test statistic, a p-value, and critical values.
 
 **Hypotheses:**
-- **Null hypothesis (H0):** The two series are NOT cointegrated (no long-run equilibrium exists)
+
+- **Null hypothesis (H0):** The two series are NOT cointegrated (no long-run equilibrium)
 - **Alternative hypothesis (H1):** The two series ARE cointegrated (a long-run equilibrium exists)
 
 **Decision rule:**
-- If p-value < 0.05: **reject H0** — the series are cointegrated at the 5% significance level
-- If p-value >= 0.05: **fail to reject H0** — no evidence of cointegration
 
-Note that the critical values for the Engle-Granger test are NOT the same as the standard ADF critical values. They are more negative (harder to reject) because you are testing residuals from a regression, not a raw series. The `coint()` function uses the correct critical values automatically.
+- If p-value < 0.05: **reject H0** -- the series are cointegrated at the 5% significance level
+- If p-value >= 0.05: **fail to reject H0** -- no evidence of cointegration
 
----
-
-## Building `econometric_models/cointegration.py` — Step by Step
-
-At each step, we show you the **complete file** from the first line to the last line. Delete everything in the file and replace it with exactly what is shown. No guessing where to put things.
-
-Make sure you have an `econometric_models/` folder with an `__init__.py` inside it (from Days 6-7). If not, create them now.
+Note: the critical values for the Engle-Granger test are NOT the same as regular ADF critical values. They are more stringent (harder to reject) because you are testing residuals from a regression, not a raw series. The `coint()` function uses the correct critical values automatically.
 
 ---
 
-### Build Step 1: Create the File with Imports and Data Loading
+## Building `econometric_models/cointegration.py` -- Step by Step
+
+We will build this file in 3 steps. At each step, we show you the **complete file** from the first line to the last line. Delete everything and replace it with exactly what is shown. No guessing where code goes.
+
+Make sure you have the `econometric_models/` folder with an `__init__.py` inside it (from Day 6). If not, create them now.
+
+---
+
+### Build Step 1: Imports, Data Loading, and Basic Structure
 
 Create a new file called `econometric_models/cointegration.py`. Delete everything in `econometric_models/cointegration.py` and replace it with this:
 
 ```python
+"""Cointegration testing for the Nigerian Inflation Predictor."""
 import os
 import pandas as pd
+import numpy as np
+from itertools import combinations
 from statsmodels.tsa.stattools import coint
 
 PROCESSED_DIR = os.path.join(os.path.dirname(__file__), "..", "data", "processed")
@@ -124,15 +136,16 @@ RESULTS_DIR = os.path.join(os.path.dirname(__file__), "..", "results")
 
 
 def load_data():
+    """Load the cleaned dataset from data/processed/cleaned_data.csv."""
     filepath = os.path.join(PROCESSED_DIR, "cleaned_data.csv")
-    df = pd.read_csv(filepath, index_col="date", parse_dates=True)
-    return df
+    return pd.read_csv(filepath, index_col="date", parse_dates=True)
 
 
 if __name__ == "__main__":
     df = load_data()
-    print(f"Loaded {len(df)} rows")
-    print(f"Variables: {list(df.columns)}")
+    print(f"Data: {df.shape[0]} observations, variables: {list(df.columns)}")
+    print("All variables confirmed I(1) from Day 7.")
+    print("Now testing pairwise for long-run equilibrium relationships.\n")
 ```
 
 **Run it:**
@@ -144,141 +157,36 @@ python -m econometric_models.cointegration
 **What you should see:**
 
 ```
-Loaded 300 rows
-Variables: ['mpr', 'inflation', 'exchange_rate', 'm2']
+Data: 300 observations, variables: ['mpr', 'infl', 'exo', 'tbr']
+All variables confirmed I(1) from Day 7.
+Now testing pairwise for long-run equilibrium relationships.
 ```
 
 (Your exact row count may differ depending on your data.)
 
-**What just happened — line by line:**
+**What just happened -- line by line:**
 
-- `from statsmodels.tsa.stattools import coint` — This imports the Engle-Granger cointegration test function. It is in the same `stattools` module as the `adfuller` function you used on Days 6-7 for the ADF test. The `coint` function wraps the entire Engle-Granger procedure (OLS regression, residual extraction, ADF test on residuals) into a single call.
-- `PROCESSED_DIR` and `RESULTS_DIR` — Paths relative to where the script lives. `os.path.dirname(__file__)` means "the folder this script is in" (which is `econometric_models/`). The `".."` goes up one level to the project root, then into the target subfolder.
-- `load_data()` — Reads the cleaned CSV from Day 4. Same pattern you have used in every script so far. `index_col="date"` makes the date column the row index, `parse_dates=True` converts it to datetime objects.
-- The `if __name__ == "__main__":` block loads the data and prints a quick confirmation so you know it works before adding anything else.
+- `"""Cointegration testing..."""` -- A module-level docstring. It describes what this file does. Good practice for every Python file.
+- `from itertools import combinations` -- This imports a function from Python's standard library that generates all unique pairs from a list. We will use it in Step 2 to generate all 6 pairs from our 4 variables.
+- `from statsmodels.tsa.stattools import coint` -- This imports the Engle-Granger cointegration test. It is in the same `stattools` module as the `adfuller` function you used on Days 6-7. The `coint` function wraps the entire two-step procedure (OLS regression + ADF on residuals) into a single call.
+- `PROCESSED_DIR` and `RESULTS_DIR` -- Paths relative to where the script lives. `os.path.dirname(__file__)` means "the folder this script is in" (which is `econometric_models/`). The `".."` goes up one level to the project root, then into the target subfolder.
+- `load_data()` -- Reads the cleaned CSV from Day 4. `index_col="date"` makes the date column the row index. `parse_dates=True` converts it to datetime objects.
+- The `if __name__ == "__main__":` block loads the data and prints a confirmation so you know the data is loading correctly before you add anything else.
 
-If that ran and printed your data summary, you are ready for the next step.
+If that ran and printed your data summary, you are ready for Step 2.
 
 ---
 
-### Build Step 2: Add the Engle-Granger Test Function
+### Build Step 2: Add the Engle-Granger Test Function and Test All 6 Pairs
 
-Delete everything in `econometric_models/cointegration.py` and replace it with this:
+Now we add the core testing function and loop through every pairwise combination. Delete everything in `econometric_models/cointegration.py` and replace it with this:
 
 ```python
+"""Cointegration testing for the Nigerian Inflation Predictor."""
 import os
 import pandas as pd
-from statsmodels.tsa.stattools import coint
-
-PROCESSED_DIR = os.path.join(os.path.dirname(__file__), "..", "data", "processed")
-RESULTS_DIR = os.path.join(os.path.dirname(__file__), "..", "results")
-
-
-def load_data():
-    filepath = os.path.join(PROCESSED_DIR, "cleaned_data.csv")
-    df = pd.read_csv(filepath, index_col="date", parse_dates=True)
-    return df
-
-
-def engle_granger_test(series1, series2, name1, name2):
-    """
-    Run the Engle-Granger cointegration test between two series.
-
-    Null hypothesis: the two series are NOT cointegrated.
-    If p-value < 0.05: reject null -> they ARE cointegrated.
-    """
-    score, p_value, critical_values = coint(series1, series2)
-
-    print(f"\n{'='*55}")
-    print(f"Engle-Granger Test: {name1} & {name2}")
-    print(f"{'='*55}")
-    print(f"Test Statistic:  {score:.4f}")
-    print(f"P-Value:         {p_value:.4f}")
-    print(f"Critical Values: 1%={critical_values[0]:.4f}, "
-          f"5%={critical_values[1]:.4f}, "
-          f"10%={critical_values[2]:.4f}")
-
-    if p_value < 0.05:
-        print(f"Conclusion: COINTEGRATED (reject H0 at 5%)")
-    else:
-        print(f"Conclusion: NOT cointegrated (fail to reject H0)")
-
-    return {
-        "pair": f"{name1} & {name2}",
-        "test_stat": score,
-        "p_value": p_value,
-        "cointegrated": p_value < 0.05,
-    }
-
-
-if __name__ == "__main__":
-    df = load_data()
-    print(f"Loaded {len(df)} rows\n")
-
-    # Test the key policy pair: inflation vs MPR
-    result = engle_granger_test(df["inflation"], df["mpr"],
-                                "inflation", "mpr")
-```
-
-**Run it:**
-
-```bash
-python -m econometric_models.cointegration
-```
-
-**What you should see:**
-
-```
-Loaded 300 rows
-
-=======================================================
-Engle-Granger Test: inflation & mpr
-=======================================================
-Test Statistic:  -X.XXXX
-P-Value:         0.XXXX
-Critical Values: 1%=-X.XXXX, 5%=-X.XXXX, 10%=-X.XXXX
-Conclusion: COINTEGRATED (reject H0 at 5%)
-```
-
-or:
-
-```
-Conclusion: NOT cointegrated (fail to reject H0)
-```
-
-(The exact numbers depend on your data. Either result is valid — see the interpretation section below.)
-
-**What just happened — line by line:**
-
-- `coint(series1, series2)` — This is the entire Engle-Granger test in one call. Behind the scenes, `statsmodels` performs OLS regression of `series1` on `series2`, extracts the residuals, and runs an ADF test on those residuals with adjusted critical values. It returns three things:
-  - `score` — The ADF test statistic on the residuals. More negative = stronger evidence of cointegration.
-  - `p_value` — The probability of observing this test statistic if the null hypothesis (no cointegration) is true. Small p-value = reject the null = cointegrated.
-  - `critical_values` — The threshold values at the 1%, 5%, and 10% significance levels. If `score` is more negative than the critical value, you reject the null at that level.
-- The function prints a formatted report and returns a dictionary with the results so we can collect them into a summary table later.
-- In the main block, we test the single most important pair first: inflation and MPR. This is the key policy question — does the CBN's interest rate share a long-run equilibrium with inflation?
-
-**Understanding the output:**
-
-The test statistic is negative (like the ADF test). The more negative it is, the stronger the evidence that the residuals are stationary and the series are cointegrated. Compare it to the critical values:
-- If the test statistic is more negative than the 5% critical value: cointegrated at 5% significance
-- If it is more negative than the 1% critical value: cointegrated at 1% significance (very strong evidence)
-- If it is less negative than the 10% critical value: no evidence of cointegration
-
-The p-value gives you the same information in a simpler format. Below 0.05 means cointegrated at 5%.
-
-Good. The function works for one pair. Now let us test all pairs.
-
----
-
-### Build Step 3: Test All Pairs and Save Results (Final Version)
-
-Delete everything in `econometric_models/cointegration.py` and replace it with this:
-
-```python
-import os
+import numpy as np
 from itertools import combinations
-
-import pandas as pd
 from statsmodels.tsa.stattools import coint
 
 PROCESSED_DIR = os.path.join(os.path.dirname(__file__), "..", "data", "processed")
@@ -286,68 +194,287 @@ RESULTS_DIR = os.path.join(os.path.dirname(__file__), "..", "results")
 
 
 def load_data():
+    """Load the cleaned dataset from data/processed/cleaned_data.csv."""
     filepath = os.path.join(PROCESSED_DIR, "cleaned_data.csv")
-    df = pd.read_csv(filepath, index_col="date", parse_dates=True)
-    return df
+    return pd.read_csv(filepath, index_col="date", parse_dates=True)
 
 
-def engle_granger_test(series1, series2, name1, name2):
+def engle_granger_test(y, x, y_name, x_name, significance=0.05):
     """
-    Run the Engle-Granger cointegration test between two series.
+    Run the Engle-Granger two-step cointegration test on two series.
 
-    Null hypothesis: the two series are NOT cointegrated.
-    If p-value < 0.05: reject null -> they ARE cointegrated.
+    Parameters
+    ----------
+    y : pd.Series
+        The dependent variable (left-hand side of the cointegrating regression).
+    x : pd.Series
+        The independent variable (right-hand side of the cointegrating regression).
+    y_name : str
+        Display name for y.
+    x_name : str
+        Display name for x.
+    significance : float
+        Significance level for the test (default 0.05).
+
+    Returns
+    -------
+    dict
+        Dictionary with test_statistic, p_value, crit_1pct, crit_5pct,
+        crit_10pct, and cointegrated (bool).
+
+    The null hypothesis is: the two series are NOT cointegrated.
+    If p_value < significance, reject the null -> they ARE cointegrated.
     """
-    score, p_value, critical_values = coint(series1, series2)
+    stat, p_value, crit_values = coint(y, x)
+
+    result = {
+        "pair": f"{y_name} & {x_name}",
+        "test_statistic": round(stat, 4),
+        "p_value": round(p_value, 4),
+        "crit_1pct": round(crit_values[0], 4),
+        "crit_5pct": round(crit_values[1], 4),
+        "crit_10pct": round(crit_values[2], 4),
+        "cointegrated": p_value < significance,
+    }
 
     print(f"\n{'='*55}")
-    print(f"Engle-Granger Test: {name1} & {name2}")
+    print(f"Engle-Granger Test: {y_name} & {x_name}")
     print(f"{'='*55}")
-    print(f"Test Statistic:  {score:.4f}")
-    print(f"P-Value:         {p_value:.4f}")
-    print(f"Critical Values: 1%={critical_values[0]:.4f}, "
-          f"5%={critical_values[1]:.4f}, "
-          f"10%={critical_values[2]:.4f}")
+    print(f"  Test Statistic:  {stat:.4f}")
+    print(f"  P-Value:         {p_value:.4f}")
+    print(f"  Critical Values: 1%={crit_values[0]:.4f}, "
+          f"5%={crit_values[1]:.4f}, "
+          f"10%={crit_values[2]:.4f}")
 
-    if p_value < 0.05:
-        print(f"Conclusion: COINTEGRATED (reject H0 at 5%)")
+    if p_value < significance:
+        print(f"  Conclusion: COINTEGRATED (reject H0 at {int(significance*100)}%)")
     else:
-        print(f"Conclusion: NOT cointegrated (fail to reject H0)")
+        print(f"  Conclusion: NOT cointegrated (fail to reject H0)")
 
-    return {
-        "pair": f"{name1} & {name2}",
-        "test_stat": score,
-        "p_value": p_value,
-        "cointegrated": p_value < 0.05,
-    }
+    return result
 
 
 if __name__ == "__main__":
     df = load_data()
-    variables = ["mpr", "inflation", "exchange_rate", "m2"]
+    variables = ["mpr", "infl", "exo", "tbr"]
 
-    print("=" * 60)
-    print("COINTEGRATION TESTING — ENGLE-GRANGER (PAIRWISE)")
-    print("=" * 60)
+    print("=" * 55)
+    print("ENGLE-GRANGER PAIRWISE COINTEGRATION TESTS")
+    print(f"Variables: {', '.join(variables)}")
+    print(f"All confirmed I(1) from Day 7.")
+    print("=" * 55)
 
     results = []
     for var1, var2 in combinations(variables, 2):
         r = engle_granger_test(df[var1], df[var2], var1, var2)
         results.append(r)
 
-    # Summary
-    results_df = pd.DataFrame(results)
-    print("\n\n" + "=" * 60)
-    print("SUMMARY: PAIRWISE COINTEGRATION")
-    print("=" * 60)
-    print(results_df.to_string(index=False))
+    print(f"\nTested {len(results)} pairs.")
+```
 
+**Run it:**
+
+```bash
+python -m econometric_models.cointegration
+```
+
+**What you should see:**
+
+Six test outputs, one for each pair:
+
+```
+=======================================================
+ENGLE-GRANGER PAIRWISE COINTEGRATION TESTS
+Variables: mpr, infl, exo, tbr
+All confirmed I(1) from Day 7.
+=======================================================
+
+=======================================================
+Engle-Granger Test: mpr & infl
+=======================================================
+  Test Statistic:  -X.XXXX
+  P-Value:         0.XXXX
+  Critical Values: 1%=-X.XXXX, 5%=-X.XXXX, 10%=-X.XXXX
+  Conclusion: COINTEGRATED (reject H0 at 5%)
+
+=======================================================
+Engle-Granger Test: mpr & exo
+=======================================================
+  ...
+
+=======================================================
+Engle-Granger Test: mpr & tbr
+=======================================================
+  ...
+
+=======================================================
+Engle-Granger Test: infl & exo
+=======================================================
+  ...
+
+=======================================================
+Engle-Granger Test: infl & tbr
+=======================================================
+  ...
+
+=======================================================
+Engle-Granger Test: exo & tbr
+=======================================================
+  ...
+
+Tested 6 pairs.
+```
+
+(Your exact numbers and conclusions will depend on your data.)
+
+**What just happened -- line by line:**
+
+- `engle_granger_test(y, x, y_name, x_name, significance=0.05)` -- The function takes two series (y and x), their display names, and a significance level. It calls `coint(y, x)` which performs the full Engle-Granger procedure internally: regress y on x with OLS, extract residuals, run ADF on residuals with adjusted critical values. It returns three things: the ADF test statistic on the residuals, the p-value, and an array of critical values at 1%, 5%, and 10%.
+- `round(stat, 4)` -- We round to 4 decimal places for clean output and CSV storage.
+- `"cointegrated": p_value < significance` -- A boolean: `True` if the p-value is below our threshold, `False` otherwise. The default threshold is 0.05 (5%).
+- `combinations(variables, 2)` -- Given `["mpr", "infl", "exo", "tbr"]`, this generates all unique pairs without repetition: (mpr, infl), (mpr, exo), (mpr, tbr), (infl, exo), (infl, tbr), (exo, tbr). That is C(4,2) = 4!/(2!*2!) = 6 pairs.
+- The loop runs the test on each pair and collects results into a list.
+
+**Why 6 pairs?** With 4 variables, the number of unique unordered pairs is 6:
+
+| Pair # | Variable 1 | Variable 2 | Economic Question |
+|--------|-----------|-----------|-------------------|
+| 1 | mpr | infl | Does monetary policy anchor inflation long-run? |
+| 2 | mpr | exo | Does the policy rate anchor the exchange rate? |
+| 3 | mpr | tbr | Does the policy rate transmit to T-bill yields? |
+| 4 | infl | exo | Does exchange rate pass-through create a long-run link? |
+| 5 | infl | tbr | Do inflation expectations drive T-bill pricing? |
+| 6 | exo | tbr | Are currency risk and short-term yields linked? |
+
+Good. The function works for all 6 pairs. Now let us add the summary and export.
+
+---
+
+### Build Step 3: Summary Table, CSV Export, and Formatted Output (Final Version)
+
+This is the final, complete version of the file. It adds a summary DataFrame, prints a formatted table, and saves results to `results/cointegration_engle_granger.csv`. Delete everything in `econometric_models/cointegration.py` and replace it with this:
+
+```python
+"""Cointegration testing for the Nigerian Inflation Predictor."""
+import os
+import pandas as pd
+import numpy as np
+from itertools import combinations
+from statsmodels.tsa.stattools import coint
+
+PROCESSED_DIR = os.path.join(os.path.dirname(__file__), "..", "data", "processed")
+RESULTS_DIR = os.path.join(os.path.dirname(__file__), "..", "results")
+
+
+def load_data():
+    """Load the cleaned dataset from data/processed/cleaned_data.csv."""
+    filepath = os.path.join(PROCESSED_DIR, "cleaned_data.csv")
+    return pd.read_csv(filepath, index_col="date", parse_dates=True)
+
+
+def engle_granger_test(y, x, y_name, x_name, significance=0.05):
+    """
+    Run the Engle-Granger two-step cointegration test on two series.
+
+    Parameters
+    ----------
+    y : pd.Series
+        The dependent variable (left-hand side of the cointegrating regression).
+    x : pd.Series
+        The independent variable (right-hand side of the cointegrating regression).
+    y_name : str
+        Display name for y.
+    x_name : str
+        Display name for x.
+    significance : float
+        Significance level for the test (default 0.05).
+
+    Returns
+    -------
+    dict
+        Dictionary with test_statistic, p_value, crit_1pct, crit_5pct,
+        crit_10pct, and cointegrated (bool).
+
+    The null hypothesis is: the two series are NOT cointegrated.
+    If p_value < significance, reject the null -> they ARE cointegrated.
+    """
+    stat, p_value, crit_values = coint(y, x)
+
+    result = {
+        "pair": f"{y_name} & {x_name}",
+        "test_statistic": round(stat, 4),
+        "p_value": round(p_value, 4),
+        "crit_1pct": round(crit_values[0], 4),
+        "crit_5pct": round(crit_values[1], 4),
+        "crit_10pct": round(crit_values[2], 4),
+        "cointegrated": p_value < significance,
+    }
+
+    print(f"\n{'='*55}")
+    print(f"Engle-Granger Test: {y_name} & {x_name}")
+    print(f"{'='*55}")
+    print(f"  Test Statistic:  {stat:.4f}")
+    print(f"  P-Value:         {p_value:.4f}")
+    print(f"  Critical Values: 1%={crit_values[0]:.4f}, "
+          f"5%={crit_values[1]:.4f}, "
+          f"10%={crit_values[2]:.4f}")
+
+    if p_value < significance:
+        print(f"  Conclusion: COINTEGRATED (reject H0 at {int(significance*100)}%)")
+    else:
+        print(f"  Conclusion: NOT cointegrated (fail to reject H0)")
+
+    return result
+
+
+if __name__ == "__main__":
+    df = load_data()
+    variables = ["mpr", "infl", "exo", "tbr"]
+
+    print("=" * 60)
+    print("ENGLE-GRANGER PAIRWISE COINTEGRATION TESTS")
+    print(f"Variables: {', '.join(variables)}")
+    print("All confirmed I(1) from Day 7.")
+    print("=" * 60)
+
+    # --- Test all 6 pairwise combinations ---
+    results = []
+    for var1, var2 in combinations(variables, 2):
+        r = engle_granger_test(df[var1], df[var2], var1, var2)
+        results.append(r)
+
+    # --- Build summary DataFrame ---
+    results_df = pd.DataFrame(results)
+
+    # --- Print formatted summary table ---
+    print("\n\n" + "=" * 60)
+    print("SUMMARY: PAIRWISE ENGLE-GRANGER COINTEGRATION")
+    print("=" * 60)
+    print(f"\n{'Pair':<18} {'Test Stat':<12} {'P-Value':<10} {'Cointegrated?':<15}")
+    print("-" * 55)
+    for _, row in results_df.iterrows():
+        verdict = "Yes" if row["cointegrated"] else "No"
+        print(f"{row['pair']:<18} {row['test_statistic']:<12} {row['p_value']:<10} {verdict:<15}")
+    print("-" * 55)
+
+    cointegrated_count = results_df["cointegrated"].sum()
+    print(f"\nCointegrated pairs: {cointegrated_count} out of {len(results_df)}")
+
+    if cointegrated_count > 0:
+        print("\nPairs with cointegration (long-run equilibrium exists):")
+        for _, row in results_df[results_df["cointegrated"]].iterrows():
+            print(f"  {row['pair']} (p={row['p_value']:.4f})")
+
+    if cointegrated_count < len(results_df):
+        print("\nPairs without cointegration:")
+        for _, row in results_df[~results_df["cointegrated"]].iterrows():
+            print(f"  {row['pair']} (p={row['p_value']:.4f})")
+
+    # --- Save to CSV ---
     os.makedirs(RESULTS_DIR, exist_ok=True)
-    results_df.to_csv(
-        os.path.join(RESULTS_DIR, "cointegration_engle_granger.csv"),
-        index=False,
-    )
-    print(f"\nSaved to results/cointegration_engle_granger.csv")
+    output_path = os.path.join(RESULTS_DIR, "cointegration_engle_granger.csv")
+    results_df.to_csv(output_path, index=False)
+    print(f"\nResults saved to: results/cointegration_engle_granger.csv")
 ```
 
 Build Step 3 above is your final complete file.
@@ -360,138 +487,102 @@ python -m econometric_models.cointegration
 
 **What you should see:**
 
+After all six individual test outputs, you will see a clean summary table:
+
 ```
 ============================================================
-COINTEGRATION TESTING — ENGLE-GRANGER (PAIRWISE)
+SUMMARY: PAIRWISE ENGLE-GRANGER COINTEGRATION
 ============================================================
 
-=======================================================
-Engle-Granger Test: mpr & inflation
-=======================================================
-Test Statistic:  -X.XXXX
-P-Value:         0.XXXX
-Critical Values: 1%=-X.XXXX, 5%=-X.XXXX, 10%=-X.XXXX
-Conclusion: ... (COINTEGRATED or NOT cointegrated)
+Pair               Test Stat    P-Value    Cointegrated?
+-------------------------------------------------------
+mpr & infl         -X.XXXX      0.XXXX     Yes
+mpr & exo          -X.XXXX      0.XXXX     No
+mpr & tbr          -X.XXXX      0.XXXX     Yes
+infl & exo         -X.XXXX      0.XXXX     Yes
+infl & tbr         -X.XXXX      0.XXXX     No
+exo & tbr          -X.XXXX      0.XXXX     No
+-------------------------------------------------------
 
-=======================================================
-Engle-Granger Test: mpr & exchange_rate
-=======================================================
-...
+Cointegrated pairs: 3 out of 6
 
-=======================================================
-Engle-Granger Test: mpr & m2
-=======================================================
-...
+Pairs with cointegration (long-run equilibrium exists):
+  mpr & infl (p=0.XXXX)
+  mpr & tbr (p=0.XXXX)
+  infl & exo (p=0.XXXX)
 
-=======================================================
-Engle-Granger Test: inflation & exchange_rate
-=======================================================
-...
+Pairs without cointegration:
+  mpr & exo (p=0.XXXX)
+  infl & tbr (p=0.XXXX)
+  exo & tbr (p=0.XXXX)
 
-=======================================================
-Engle-Granger Test: inflation & m2
-=======================================================
-...
-
-=======================================================
-Engle-Granger Test: exchange_rate & m2
-=======================================================
-...
-
-
-============================================================
-SUMMARY: PAIRWISE COINTEGRATION
-============================================================
-                  pair  test_stat  p_value  cointegrated
-     mpr & inflation    -X.XXXX   0.XXXX          True
-  mpr & exchange_rate   -X.XXXX   0.XXXX         False
-            mpr & m2   -X.XXXX   0.XXXX         False
-inflation & exchange_rate -X.XXXX 0.XXXX          True
-          inflation & m2 -X.XXXX  0.XXXX          True
-     exchange_rate & m2  -X.XXXX  0.XXXX          True
-
-Saved to results/cointegration_engle_granger.csv
+Results saved to: results/cointegration_engle_granger.csv
 ```
 
-(Your exact numbers and True/False values will depend on your data. The example above is illustrative — your results may differ.)
+(The `X.XXXX` values will be actual numbers when you run it. The Yes/No verdicts above are illustrative -- your actual results depend on your data.)
 
-**What changed from the previous version:**
+**What changed from Step 2:**
 
-- `from itertools import combinations` — This is a Python standard library function that generates all unique pairs from a list. Given `["mpr", "inflation", "exchange_rate", "m2"]`, it produces the 6 pairs: (mpr, inflation), (mpr, exchange_rate), (mpr, m2), (inflation, exchange_rate), (inflation, m2), (exchange_rate, m2). This is exactly C(4,2) = 6 combinations.
-- The `for var1, var2 in combinations(variables, 2):` loop runs the Engle-Granger test on each pair and collects the results into a list.
-- `results_df = pd.DataFrame(results)` converts the list of dictionaries into a DataFrame, which gives us a clean summary table.
-- The summary table is printed and saved to CSV. This CSV file goes into your thesis appendix.
-
-**Why 6 pairs?** With 4 variables, the number of unique pairs is 4! / (2! * 2!) = 6. These are:
-
-| Pair # | Variable 1 | Variable 2 |
-|--------|-----------|-----------|
-| 1 | mpr | inflation |
-| 2 | mpr | exchange_rate |
-| 3 | mpr | m2 |
-| 4 | inflation | exchange_rate |
-| 5 | inflation | m2 |
-| 6 | exchange_rate | m2 |
-
-Each pair is tested independently. This is pairwise cointegration testing.
+- `results_df = pd.DataFrame(results)` -- Converts the list of dictionaries into a DataFrame. Each dictionary (one per pair) becomes a row. The keys become column names. This gives us a clean tabular structure for printing and saving.
+- The formatted summary table uses f-string alignment (`:<18`, `:<12`, `:<10`) to create neat columns. The `<` means left-align, the number is the field width.
+- `results_df["cointegrated"].sum()` -- Since `True` equals 1 and `False` equals 0, summing a boolean column counts the number of `True` values.
+- `results_df[results_df["cointegrated"]]` -- Boolean indexing: this selects only the rows where `cointegrated` is `True`. The tilde `~` inverts the boolean, selecting the rows where it is `False`.
+- `os.makedirs(RESULTS_DIR, exist_ok=True)` -- Creates the results directory if it does not already exist. The `exist_ok=True` prevents an error if the directory is already there.
+- `results_df.to_csv(output_path, index=False)` -- Saves the DataFrame to CSV. `index=False` means do not write the row numbers as a column.
 
 ---
 
-## Interpreting Your Results — Nigeria Specific
+## Interpreting Your Results -- Nigeria Specific
 
-Your results will fall into one of several patterns. Here is how to interpret the most likely outcomes for Nigerian data.
+Your results will fall into different patterns depending on your data. Here is how to interpret the most important pairs.
 
-### Pairs Likely to Show Cointegration
+### MPR and TBR: Likely Cointegrated
 
-**exchange_rate and m2:** This pair is the most likely to be cointegrated. Both series have been driven by the same fundamental force over the past 25 years — monetary expansion. As the CBN expanded the money supply (through deficit monetization, Ways and Means advances to the federal government, and other channels), the Naira lost value against the dollar. The quantity theory of money predicts this: more Naira chasing the same amount of foreign currency pushes the exchange rate up. The long-run link between money supply and currency value acts as the "leash" in our analogy.
+This is the pair most likely to show cointegration. The CBN's Monetary Policy Rate is the anchor for the entire short-term interest rate structure in Nigeria. When the MPC raises the MPR, the Standing Lending Facility rate rises automatically (MPR + 1 percentage point), the Standing Deposit Facility rate rises (MPR - 1 percentage point), and commercial banks adjust their T-bill bidding accordingly.
 
-**inflation and exchange_rate:** This pair often shows cointegration because exchange rate pass-through is a structural feature of the Nigerian economy. Nigeria imports a significant share of what it consumes — refined petroleum, food, machinery, chemicals. When the Naira depreciates, import prices rise, and those price increases feed into the CPI. This pass-through creates a long-run equilibrium between the exchange rate and inflation.
+The transmission is direct and institutional. The CBN does not just hope that T-bill rates follow the MPR -- the entire framework is designed so they must. The spread between MPR and TBR may widen during periods of excess liquidity (when banks are flush with cash and T-bill demand is high, pushing yields down) or during periods of fiscal dominance (when the government borrows heavily, pushing yields up). But these deviations are temporary. The spread always reverts because the MPR is the price of last resort for bank liquidity.
 
-**inflation and m2:** Money supply growth and inflation are linked through the quantity theory of money (MV = PQ). If money supply grows faster than real output, prices must eventually rise. In Nigeria, M2 has grown at 20-30% per year while real GDP grew at 2-4%. The difference shows up as inflation over the long run.
+If your test confirms cointegration, it validates the CBN's interest rate corridor system. The "leash" between MPR and TBR is the institutional structure of monetary policy itself.
 
-### Pairs That May or May Not Show Cointegration
+### EXO and INFL: May Be Cointegrated
 
-**mpr and inflation:** This is the most interesting pair from a policy perspective. If they are cointegrated, it means the CBN's monetary policy has been systematic enough to maintain a long-run equilibrium with inflation — the CBN raises rates when inflation rises and cuts when inflation falls, in a consistent, predictable way.
+Exchange rate pass-through is a structural feature of the Nigerian economy. Nigeria imports a large share of what it consumes -- refined petroleum products, food (especially wheat, rice, sugar), machinery, chemicals, and consumer goods. When the Naira depreciates (exo goes up), import prices rise in Naira terms. Those higher import costs feed through to consumer prices (infl goes up).
 
-If they are NOT cointegrated, it does not mean the CBN is irrelevant. It means the CBN's response to inflation has been too inconsistent to create a stable long-run equilibrium. This could be because:
-- The CBN was slow to respond to inflation shocks (delayed tightening cycles)
-- Political interference disrupted monetary policy (the CBN's independence has been questioned at various points in Nigerian history)
-- The CBN pursued multiple conflicting objectives simultaneously (price stability, exchange rate stability, growth, development finance) and could not maintain a consistent inflation response
-- Structural breaks in the data (the 2016 recession, COVID-19, the 2023 exchange rate unification) disrupted the equilibrium
+If exo and infl are cointegrated, it means pass-through is not just a short-term phenomenon. It means the exchange rate and the price level share a permanent, structural long-run equilibrium. A permanently weaker Naira means a permanently higher price level. The 2023 exchange rate unification -- where the official rate moved from around 460 to over 750 NGN/USD -- would predict a permanent increase in the inflation level, not just a temporary spike.
 
-Both outcomes are valid findings. If they are cointegrated, you report that monetary policy and inflation share a long-run equilibrium. If they are not, you report that the relationship is unstable and discuss the structural and institutional reasons why.
+If they are NOT cointegrated, it may be because the exchange rate regime changes (the CBN has switched between fixed, managed float, and multiple exchange rate systems several times) break the long-run equilibrium. The relationship exists within each regime but not across regimes.
 
-**mpr and exchange_rate / mpr and m2:** These pairs test whether the CBN's policy rate has a long-run relationship with the exchange rate or money supply. In theory, higher interest rates should attract foreign capital (supporting the Naira) and slow money supply growth. In practice, Nigeria's capital controls, multiple exchange rate regimes, and the dominance of oil revenues in determining the exchange rate may weaken or break these links.
+### Other Pairs: Depends on the Data
 
-### What If Most Pairs Are NOT Cointegrated?
+**MPR and INFL:** If cointegrated, the CBN's monetary policy has been systematic enough to maintain a long-run link with inflation -- the CBN raises rates when inflation rises and cuts when it falls, consistently enough to create a stable equilibrium. If not cointegrated, it suggests the CBN's inflation response has been too inconsistent (delayed tightening, political interference, conflicting objectives) to create a stable long-run equilibrium. Both outcomes are valid thesis findings.
 
-This is a perfectly valid finding. It means the pairwise long-run relationships between your variables are weak or nonexistent. There are two important things to keep in mind:
+**MPR and EXO:** In theory, higher interest rates should support the Naira by attracting capital inflows. In practice, Nigeria's capital controls and the dominance of oil revenues in determining the exchange rate may weaken this link.
 
-1. **The Engle-Granger test only checks PAIRWISE cointegration.** It tests whether two specific variables share a long-run equilibrium. But in a system of four variables, there may be a cointegrating relationship that involves THREE or FOUR variables simultaneously. For example, there might be no pairwise cointegration between inflation and MPR, or between inflation and exchange_rate, but a linear combination of ALL FOUR variables might be stationary. The Engle-Granger test cannot detect this.
+**INFL and TBR:** The Fisher equation predicts that nominal interest rates (like T-bill rates) should reflect expected inflation. If cointegrated, it means the T-bill market prices in inflation expectations systematically over the long run.
 
-2. **Tomorrow you will run the Johansen test (Day 9).** The Johansen test examines all four variables simultaneously and can detect MULTIPLE cointegrating vectors. It is more powerful than the Engle-Granger test for multivariate systems. So if you find few or no cointegrating pairs today, the Johansen test may still find cointegration in the full system.
+**EXO and TBR:** This tests whether currency depreciation risk is priced into short-term government borrowing costs. A weaker Naira should raise yields because investors demand compensation for currency risk.
 
-### What If ALL Pairs Are Cointegrated?
+### What If Few or No Pairs Are Cointegrated?
 
-This is also a valid finding, especially for Nigerian macroeconomic data. If all four variables are I(1) and all driven by the same underlying forces (monetary expansion, Naira depreciation, CBN policy responses), then multiple pairwise cointegrating relationships are plausible. This would suggest a strongly interconnected system where all variables share long-run equilibria — consistent with the macroeconomic theory that MPR, inflation, exchange rate, and money supply are all part of the same monetary transmission mechanism.
+Do not panic. This is a perfectly valid finding, and it does NOT mean your project has failed. Remember two things:
 
-### What to Tell Your Examiner
+1. **The Engle-Granger test only checks pairwise cointegration.** It tests two variables at a time. But in a system of four variables, there may be a cointegrating relationship that involves THREE or FOUR variables simultaneously. For example, there might be no pairwise cointegration between mpr and infl alone, but a linear combination of ALL FOUR variables might be stationary. The Engle-Granger test simply cannot see this.
 
-Here is how to discuss your cointegration results in your thesis defense:
+2. **Tomorrow you will run the Johansen test (Day 9).** The Johansen test examines all four variables simultaneously and can detect MULTIPLE cointegrating vectors. It is strictly more powerful than the pairwise approach for multivariate systems. So even if you find zero cointegrating pairs today, the Johansen test may still find cointegration in the full four-variable system.
 
-**If you found cointegration in most pairs:** "The Engle-Granger pairwise tests indicate significant cointegrating relationships between [list the pairs]. This suggests that despite being individually non-stationary, these variables share long-run equilibria — consistent with [monetary transmission theory / quantity theory of money / exchange rate pass-through]. The presence of cointegration means that modelling these variables in levels using an Error Correction Model (ECM) or VECM framework is appropriate and will not produce spurious results."
+3. **The ARDL bounds test (Week 3) does not require pre-testing for cointegration.** One of the key advantages of the ARDL framework (Pesaran, Shin, and Smith, 2001) is that it tests for cointegration as part of the model estimation itself. It works regardless of whether variables are I(0) or I(1), and it does not require you to establish cointegration beforehand. So even if both Engle-Granger and Johansen find nothing, the ARDL approach remains valid.
 
-**If you found cointegration in few pairs:** "The Engle-Granger pairwise tests found cointegration between [list the pairs], but not between [list the others]. The absence of pairwise cointegration in some pairs does not rule out multivariate cointegration. The Johansen test, which examines the full system simultaneously, may detect cointegrating relationships that the pairwise approach misses. Additionally, the limited cointegration may reflect structural instability in the Nigerian economy — particularly the exchange rate regime changes and shifts in monetary policy frameworks over the sample period."
+### What If All Pairs Are Cointegrated?
 
-**Regardless of results:** "It is important to note that the Engle-Granger test has lower statistical power than the Johansen test in multivariate settings, and it is sensitive to the choice of which variable is used as the dependent variable in the first-step regression. The Johansen results in the next section provide a more comprehensive picture of the cointegrating structure."
+This is also a valid finding for Nigerian macroeconomic data. If all four variables are I(1) and all driven by the same underlying forces -- monetary expansion, Naira depreciation, CBN policy responses, fiscal dominance -- then multiple pairwise equilibria are plausible. This would suggest a tightly interconnected system where every variable is linked to every other variable in the long run, consistent with the theory that MPR, inflation, exchange rate, and Treasury Bill rates are all part of the same monetary transmission mechanism.
 
 ---
 
 ## Commit
 
 ```bash
-git add econometric_models/cointegration.py
-git commit -m "Day 8: Engle-Granger pairwise cointegration tests"
+git add econometric_models/cointegration.py results/cointegration_engle_granger.csv
+git commit -m "Day 8: Engle-Granger pairwise cointegration tests for all 6 pairs"
 ```
 
 ---
@@ -500,48 +591,46 @@ git commit -m "Day 8: Engle-Granger pairwise cointegration tests"
 
 | Problem | Solution |
 |---------|----------|
-| `FileNotFoundError: cleaned_data.csv not found` or similar | You need to run the cleaning script first: `python -m data_processing.clean`. The cointegration script reads from `data/processed/cleaned_data.csv`, which is created by the Day 4 cleaning step. |
-| `ModuleNotFoundError: No module named 'statsmodels'` | You need statsmodels installed. Run `pip install statsmodels` (it should already be installed from Day 6). Check that your virtual environment is activated. |
-| `ImportError: cannot import name 'coint' from 'statsmodels.tsa.stattools'` | Your version of statsmodels may be too old. Run `pip install --upgrade statsmodels` to get the latest version. The `coint` function has been available since statsmodels 0.8, so any recent version should work. |
-| `KeyError: 'mpr'` or `KeyError: 'inflation'` | Your cleaned CSV does not have the expected column names. Open `data/processed/cleaned_data.csv` and check the header row. The columns must be exactly: `date`, `mpr`, `inflation`, `exchange_rate`, `m2`. If the names differ, update the `variables` list in the script to match. |
-| `ValueError: x and y must have the same length` | One of your series has missing values that created a length mismatch. Go back to Day 4's cleaning script and make sure all missing values are handled. The `coint` function requires both series to have the same number of observations with no NaN values. |
-| `InfestimableError` or `LinAlgError: Singular matrix` | This happens when one of the series has zero variance (all values are the same) or when the two series are perfectly collinear. Check your data with `df.describe()` to make sure all columns have variation. |
+| `FileNotFoundError: cleaned_data.csv not found` | You need to run the cleaning script first: `python -m data_processing.clean`. The cointegration script reads from `data/processed/cleaned_data.csv`, which is created by the Day 4 cleaning step. |
+| `ModuleNotFoundError: No module named 'statsmodels'` | You need statsmodels installed. Run `pip install statsmodels==0.14.1` (it should already be installed from Day 6). Make sure your virtual environment is activated. |
+| `ImportError: cannot import name 'coint'` | Your version of statsmodels may be too old. Run `pip install --upgrade statsmodels`. The `coint` function has been available since statsmodels 0.8. |
+| `KeyError: 'mpr'` or `KeyError: 'infl'` | Your cleaned CSV does not have the expected column names. Open `data/processed/cleaned_data.csv` and check the header row. The columns must be exactly: `date`, `mpr`, `infl`, `exo`, `tbr`. If the names differ, update the `variables` list in the script to match your actual column names. |
+| `ValueError: x and y must have the same length` | One of your series has missing values that created a length mismatch. Go back to Day 4's cleaning script and ensure all NaN values are handled. The `coint` function requires both series to have the same number of observations with no NaN values. |
+| `LinAlgError: Singular matrix` | This happens when one of the series has zero variance (all values are the same) or the two series are perfectly collinear. Check your data with `df.describe()` to make sure all columns have variation. |
 
 ---
 
 ## Check Your Understanding
 
-These are the kinds of questions an examiner will ask about cointegration. Practice answering them out loud before your defense.
+These are questions an examiner will ask. Practice answering them out loud.
 
 ### 1. "What is cointegration in plain English?"
 
-**Answer:** "Cointegration means that two time series that individually wander — they are non-stationary, they do not revert to a fixed mean — are nonetheless connected to each other in the long run. The gap between them is stationary. It fluctuates, but it always reverts back to a mean. They may diverge in the short run, but they always come back together.
+**Answer:** "Cointegration means that two time series that individually wander -- they are non-stationary, they do not revert to a fixed mean -- are nonetheless connected to each other in the long run. The gap between them is stationary. It fluctuates, but it always reverts back to a mean. They may diverge in the short run, but economic forces always pull them back together.
 
-The analogy I use is a drunk person walking their dog on a leash. Both the drunk and the dog follow random, unpredictable paths — both are non-stationary. But the distance between them is bounded by the leash and always reverts to a manageable range. That distance is stationary. The drunk and the dog are cointegrated.
+The analogy I use is a drunk person walking their dog on a leash. Both the drunk and the dog follow random, unpredictable paths -- both are non-stationary. But the distance between them is bounded by the leash and always reverts to a manageable range. That distance is stationary. The drunk and the dog are cointegrated.
 
-In economic terms, cointegration means two variables share a long-run equilibrium. Short-run shocks can push them apart, but economic forces pull them back together over time."
+In economic terms, cointegration means two variables share a long-run equilibrium. For Nigeria, the MPR and Treasury Bill Rate are a natural example. Both rates wander over time, but the CBN's monetary policy framework acts as a leash that keeps the spread between them bounded."
 
-### 2. "If two variables are cointegrated, what does that tell you about running OLS on them in levels?"
+### 2. "Why did you test all 6 pairs instead of just the pairs you care about?"
 
-**Answer:** "If two I(1) variables are cointegrated, it means that running OLS on them in levels is NOT spurious — the relationship the regression finds is genuine, not an artifact of common trends. In fact, OLS gives what econometricians call 'super-consistent' estimates of the cointegrating vector. The OLS estimates converge to the true parameter values faster than they would in a standard stationary regression.
+**Answer:** "With four variables, there are C(4,2) = 6 unique pairwise combinations. I tested all of them for two reasons.
 
-This is the foundation of the Engle-Granger two-step method: first, estimate the long-run relationship using OLS in levels; second, use the residuals from that regression as an error correction term in a short-run dynamic model. The first step works precisely because cointegration makes OLS in levels valid.
+First, completeness. Each pair represents a different economic hypothesis. The mpr-tbr pair tests monetary policy transmission. The exo-infl pair tests exchange rate pass-through. The mpr-infl pair tests whether the CBN's rate-setting behaviour has a stable long-run link to inflation. Testing all pairs gives a complete picture of which bilateral long-run relationships exist in the data.
 
-However, the standard errors from the first-step OLS are not reliable for inference — you cannot use them for hypothesis testing. For valid inference on the cointegrating parameters, you need methods like the Johansen procedure, Dynamic OLS (DOLS), or Fully Modified OLS (FMOLS)."
+Second, the Engle-Granger test is a pairwise procedure by design. It can only examine two variables at a time. By testing all 6 pairs, I extract the maximum information possible from this method before moving to the Johansen test, which examines all four variables simultaneously. Comparing the pairwise results with the Johansen results helps validate the findings."
 
-### 3. "Why might MPR and inflation not be cointegrated even though the CBN targets inflation?"
+### 3. "The Engle-Granger test found no cointegration for a pair you expected to be cointegrated. What could explain this?"
 
-**Answer:** "Cointegration requires a SYSTEMATIC long-run equilibrium — a consistent, predictable link between the two variables that persists over the entire sample period. Several factors specific to Nigeria could prevent this:
+**Answer:** "Several factors could prevent the Engle-Granger test from detecting cointegration even when a long-run relationship exists in theory.
 
-First, the CBN's response to inflation has not always been timely. There have been long periods where the MPC held the MPR constant despite changing inflation conditions. This delayed response weakens the equilibrium relationship.
+First, the Engle-Granger test has lower statistical power than multivariate methods like the Johansen test. With a limited sample size, it may fail to reject the null of no cointegration even when the relationship is real. This is a Type II error.
 
-Second, political interference has disrupted monetary policy at various points. The CBN's operational independence has been questioned, particularly during periods where the government needed deficit financing. When political considerations override inflation targeting, the systematic link breaks down.
+Second, the Engle-Granger test is sensitive to which variable is placed on the left side of the regression. Regressing infl on mpr can give a different result than regressing mpr on infl. With only two variables, the test has no way to determine the correct normalization.
 
-Third, the CBN has pursued multiple conflicting objectives — price stability, exchange rate stability, economic growth, financial inclusion, development finance. When the central bank tries to do too many things at once, it cannot maintain a consistent inflation response function.
+Third, structural breaks in the data can disrupt the equilibrium relationship. If the relationship between two variables changed fundamentally at some point -- for example, if the CBN's exchange rate regime changed -- the test may not find cointegration over the full sample even though it existed within each sub-period.
 
-Fourth, structural breaks in the data — the 2016 recession, COVID-19 in 2020, the 2023 exchange rate unification — may have disrupted the equilibrium relationship. A cointegrating relationship that held before 2016 might not hold after 2023 because the economic structure changed fundamentally.
-
-The absence of cointegration does not mean the MPR is irrelevant to inflation. It means the relationship is not stable enough over the full sample period to qualify as a long-run equilibrium. The CBN may still influence inflation — just not in the systematic, predictable way that cointegration requires."
+Fourth, the relationship may genuinely require more than two variables. The monetary transmission mechanism involves mpr, infl, exo, and tbr simultaneously. A pairwise test might miss a cointegrating relationship that only appears when all four are considered together. This is exactly what the Johansen test on Day 9 is designed to detect."
 
 ---
 
@@ -549,9 +638,13 @@ The absence of cointegration does not mean the MPR is irrelevant to inflation. I
 
 | Item | File | Purpose |
 |------|------|---------|
-| Cointegration test script | `econometric_models/cointegration.py` | Runs Engle-Granger pairwise cointegration tests on all 6 variable pairs |
-| Cointegration results CSV | `results/cointegration_engle_granger.csv` | Summary table with test statistics, p-values, and cointegration decisions for all pairs |
+| Cointegration test script | `econometric_models/cointegration.py` | Runs Engle-Granger pairwise tests on all 6 variable pairs |
+| Test function | `engle_granger_test()` | Reusable function that tests any two series and returns a dict |
+| Summary table | Printed to terminal | Shows test stats, p-values, and verdicts at a glance |
+| Results CSV | `results/cointegration_engle_granger.csv` | Machine-readable record of all pairwise cointegration results |
+
+**Key finding:** You now know which pairs of your four Nigerian macroeconomic variables share a long-run equilibrium and which do not. The MPR-TBR pair is likely cointegrated (policy rate transmission). The EXO-INFL pair may be cointegrated (exchange rate pass-through). Other pairs depend on your specific data.
 
 **No new packages installed today.** The `coint` function comes from `statsmodels`, which you installed on Day 6.
 
-**Tomorrow (Day 9):** You will run the Johansen cointegration test, which examines all four variables simultaneously and can detect multiple cointegrating vectors. This is more powerful than today's pairwise approach and will give you a complete picture of the long-run relationships in your system.
+**Tomorrow (Day 9):** You will run the Johansen cointegration test, which examines all four variables simultaneously and determines how many cointegrating relationships exist in the full system. The Johansen test is more powerful than today's pairwise approach and can detect multivariate equilibria that the Engle-Granger test cannot see. Its result -- the cointegration rank -- is one of the most important numbers in your entire thesis.
