@@ -40,7 +40,7 @@ date,mpr,omo,crr,lr,tbr,infl,inflcore,inflfood,fcpi,ccpi,acpi,...
 2007-03-01,10.0,... (values for all columns)
 ```
 
-The exact values and start date depend on your data. The important things are: (1) the first row is a header with column names, (2) values are separated by commas, and (3) dates are in `YYYY-MM-DD` format.
+The exact values and start date depend on your data. The important things are: (1) the first row is a header with column names, and (2) values are separated by commas. Your dates are in CBN's abbreviated format (`8-Jan`, `8-Feb`, etc.) — the ingestion script handles this automatically using `format="%y-%b"`.
 
 ### Understanding All 34 Columns
 
@@ -208,8 +208,10 @@ def load_raw_data(filename=None):
     df = pd.read_csv(filepath)
     print(f"Loaded {len(df)} rows and {len(df.columns)} columns from {filename}")
 
-    # Convert the date column from text to actual datetime objects
-    df["date"] = pd.to_datetime(df["date"])
+    # Convert the date column from text to actual datetime objects.
+    # CBN data uses "8-Jan", "8-Feb" format: 2-digit year + abbreviated month.
+    # format="%y-%b" tells pandas: %y = 2-digit year, %b = month abbreviation.
+    df["date"] = pd.to_datetime(df["date"], format="%y-%b")
 
     # Sort by date (oldest first) and set date as the index
     df = df.sort_values("date").reset_index(drop=True)
@@ -234,16 +236,16 @@ python -m data_ingestion.ingest
 **Expected output** (your dates will depend on your data):
 
 ```
-Loaded XX rows and 34 columns from cbn_infl_data.csv
-Date range: YYYY-MM-DD to YYYY-MM-DD
+Loaded 126 rows and 35 columns from cbn_infl_data.csv
+Date range: 2008-01-01 to 2019-01-01
             mpr   omo   crr  ...
 date
-YYYY-MM-DD  ...   ...   ...  ...
+2008-01-01  ...   ...   ...  ...
 ```
 
 **What changed:** Three new operations.
 
-`pd.to_datetime(df["date"])` converts the date column from plain text (like `"2007-01-01"`) into Python datetime objects that pandas understands as real dates. Without this, pandas treats dates as ordinary text and cannot do date math.
+`pd.to_datetime(df["date"], format="%y-%b")` converts the date column from the CBN's abbreviated format (`"8-Jan"`, `"19-Jan"`) into proper datetime objects. The `format` parameter tells pandas exactly how to read the date: `%y` means a 2-digit year (so `8` becomes `2008`, `19` becomes `2019`) and `%b` means an abbreviated month name (like `Jan`, `Feb`, `Mar`). Without the `format` parameter, pandas would fail because it cannot guess this unusual format automatically.
 
 `sort_values("date")` ensures rows are in chronological order, even if the CSV was not sorted. `set_index("date")` makes the date column the row label -- notice how dates now appear on the left side of the table instead of numbered rows.
 
@@ -288,8 +290,9 @@ def load_raw_data(filename=None):
         )
     print(f"Core columns verified: {CORE_COLUMNS}")
 
-    # Convert the date column from text to actual datetime objects
-    df["date"] = pd.to_datetime(df["date"])
+    # Convert the date column from text to actual datetime objects.
+    # CBN data uses "8-Jan", "8-Feb" format: 2-digit year + abbreviated month.
+    df["date"] = pd.to_datetime(df["date"], format="%y-%b")
 
     # Sort by date (oldest first) and set date as the index
     df = df.sort_values("date").reset_index(drop=True)
@@ -314,9 +317,9 @@ python -m data_ingestion.ingest
 **Expected output** (new line in the middle):
 
 ```
-Loaded XX rows and 34 columns from cbn_infl_data.csv
+Loaded 126 rows and 35 columns from cbn_infl_data.csv
 Core columns verified: ['mpr', 'infl', 'exo', 'tbr']
-Date range: YYYY-MM-DD to YYYY-MM-DD
+Date range: 2008-01-01 to 2019-01-01
 ```
 
 If you see a `ValueError` about missing columns, open your CSV in a text editor and check the very first line (the header row). The column names must match exactly -- lowercase, no spaces. For example, if your CSV uses `inflation` instead of `infl`, or `exchange_rate` instead of `exo`, you will need to rename the columns in your CSV file.
@@ -362,8 +365,9 @@ def load_raw_data(filename=None):
         )
     print(f"Core columns verified: {CORE_COLUMNS}")
 
-    # Convert the date column from text to actual datetime objects
-    df["date"] = pd.to_datetime(df["date"])
+    # Convert the date column from text to actual datetime objects.
+    # CBN data uses "8-Jan", "8-Feb" format: 2-digit year + abbreviated month.
+    df["date"] = pd.to_datetime(df["date"], format="%y-%b")
 
     # Convert core columns to float, replacing bad values with NaN
     for col in CORE_COLUMNS:
@@ -393,9 +397,9 @@ python -m data_ingestion.ingest
 **Expected output** (new lines at the bottom of the summary):
 
 ```
-Loaded XX rows and 34 columns from cbn_infl_data.csv
+Loaded 126 rows and 35 columns from cbn_infl_data.csv
 Core columns verified: ['mpr', 'infl', 'exo', 'tbr']
-Date range: YYYY-MM-DD to YYYY-MM-DD
+Date range: 2008-01-01 to 2019-01-01
 Core column types:
 mpr     float64
 infl    float64
@@ -471,8 +475,9 @@ def load_raw_data(filename=None):
         )
     print(f"Core columns verified: {CORE_COLUMNS}")
 
-    # Convert the date column from text to actual datetime objects
-    df["date"] = pd.to_datetime(df["date"])
+    # Convert the date column from text to actual datetime objects.
+    # CBN data uses "8-Jan", "8-Feb" format: 2-digit year + abbreviated month.
+    df["date"] = pd.to_datetime(df["date"], format="%y-%b")
 
     # Convert core columns to float, replacing bad values with NaN
     for col in CORE_COLUMNS:

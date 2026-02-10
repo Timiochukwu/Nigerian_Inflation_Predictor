@@ -208,7 +208,7 @@ The raw data file `cbn_infl_data.csv` contains 34 monthly variables from the CBN
 
 | Column | Description |
 |---|---|
-| `date` | Observation date (YYYY-MM-DD, first of month) |
+| `date` | Observation date (CBN format: `8-Jan` = Jan 2008) |
 | `mpr` | **Monetary Policy Rate (%)** — CBN benchmark interest rate |
 | `omo` | Open Market Operations rate (%) |
 | `crr` | Cash Reserve Ratio (%) |
@@ -389,7 +389,7 @@ available for robustness checks.
 
 | Column | Type | Format | Example |
 |---|---|---|---|
-| `date` | Date | YYYY-MM-DD (first of month) | 2023-06-01 |
+| `date` | Date | 2-digit year + month abbreviation | 8-Jan, 19-Jan |
 | `mpr` | Numeric | Percentage | 18.75 |
 | `tbr` | Numeric | Percentage | 5.50 |
 | `exo` | Numeric | NGN per USD | 750.42 |
