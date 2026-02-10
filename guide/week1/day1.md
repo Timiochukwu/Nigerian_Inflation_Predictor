@@ -2,44 +2,45 @@
 
 ## What You'll Learn Today
 
-- How to create a professional project folder structure
-- What each folder is for and why it matters
-- How to use git to track your work
-- How to create the foundational files every project needs
+- How to create a professional project folder structure from scratch
+- What each folder is for and why it matters in a research project
+- How to use Git to track your work so nothing is ever lost
+- How to create the foundational files every serious project needs
+- The 34-column CBN dataset you will work with and the 4 core modeling variables
 
 ## Why This Matters
 
-When you present this project in a thesis defense or interview, the first thing people see is your folder structure. A messy project with random scripts says "student experiment." A clean, enforced structure says "production system." Today we build that structure.
+When you present this project in a thesis defense or job interview, the first thing
+people look at is your project structure. A messy folder of random scripts says
+"weekend experiment." A clean structure with documentation says "production-grade
+research system." Today you build that structure — once, correctly — so every file
+you create for the rest of the project has a clear home.
 
 ---
 
 ## Prerequisites
 
-Before starting, make sure you have:
-- **Python 3.10 or higher** installed
-- **Git** installed
-- A terminal (Command Prompt on Windows, Terminal on Mac/Linux)
+Make sure you have **Python 3.10+** and **Git** installed. Verify in your terminal:
 
-Check by running:
 ```bash
-python --version    # Should show 3.10+
-git --version       # Should show any version
+python --version    # Should print Python 3.10 or higher
+git --version       # Should print any git version
 ```
 
-If Python is not installed, download from https://www.python.org/downloads/
+If missing: Python from https://www.python.org/downloads/, Git from https://git-scm.com/downloads.
+On some Windows systems, use `python3` instead of `python`.
 
 ---
 
 ## Step 1: Create the Project Folder
-
-Open your terminal and run:
 
 ```bash
 mkdir Nigerian_Inflation_Predictor
 cd Nigerian_Inflation_Predictor
 ```
 
-**What this does:** Creates a new empty folder and moves into it. This is your project root — everything lives inside here.
+`mkdir` creates a new empty folder. `cd` moves into it. This is your project root —
+everything lives here. Think of it as the compound fence; every file stays inside.
 
 ---
 
@@ -49,12 +50,8 @@ cd Nigerian_Inflation_Predictor
 git init
 ```
 
-**What this does:** Turns this folder into a git repository. Git tracks every change you make, so you can always go back to a working version if something breaks.
-
-**What you should see:**
-```
-Initialized empty Git repository in /path/to/Nigerian_Inflation_Predictor/.git/
-```
+This turns the folder into a Git repository — a logbook that records every change.
+If you break something on Day 12, you can revert to the working version from Day 11.
 
 ---
 
@@ -62,33 +59,35 @@ Initialized empty Git repository in /path/to/Nigerian_Inflation_Predictor/.git/
 
 ```bash
 mkdir -p data/raw data/processed
-mkdir data_ingestion data_processing econometric_models simulation api results docs guide
+mkdir -p data_ingestion data_processing econometric_models simulation
+mkdir -p api results docs guide
 ```
 
-**What this does:** Creates all the folders your project will use. Here's what each one is for:
+The `-p` flag creates parent folders automatically (`data/raw` creates both `data/`
+and `raw/` inside it).
 
-| Folder | Purpose | Example contents |
-|--------|---------|-----------------|
-| `data/raw/` | Original data files exactly as downloaded from CBN/NBS | `nigeria_macro_data.csv` |
-| `data/processed/` | Cleaned, ready-to-use data files | `cleaned_data.csv` |
-| `data_ingestion/` | Python scripts that load raw data | `ingest.py` |
-| `data_processing/` | Python scripts that clean data and run tests | `clean.py`, `stationarity.py` |
-| `econometric_models/` | Python scripts for ARDL, VAR, IRF, FEVD | `ardl_model.py`, `var_model.py` |
-| `simulation/` | Python scripts for policy shock simulation | `policy_shock.py` |
-| `api/` | Java Spring Boot REST API (built later in Week 6) | Java source files |
+| Folder | Purpose | Example Contents |
+|---|---|---|
+| `data/raw/` | Original data exactly as downloaded — never modified | `cbn_infl_data.csv` |
+| `data/processed/` | Cleaned, analysis-ready data | `processed_data.csv` |
+| `data_ingestion/` | Python scripts that load and validate raw data | `ingest.py` |
+| `data_processing/` | Scripts that clean data and run statistical tests | `clean.py`, `stationarity.py` |
+| `econometric_models/` | ARDL, VAR, IRF, FEVD estimation scripts | `ardl_model.py`, `var_model.py` |
+| `simulation/` | Policy shock simulation scripts | `policy_shock.py` |
+| `api/` | Java Spring Boot REST API (built later) | Java source files |
 | `results/` | Generated outputs — plots, tables, JSON | `irf_mpr_shock.png` |
-| `docs/` | Documentation — methodology, data sources | `methodology.md` |
-| `guide/` | This build guide you're reading | `week1/day1.md` |
+| `docs/` | Methodology notes, data source records | `data_sources.md` |
+| `guide/` | This build guide you are reading | `week1/day1.md` |
 
-**Rule:** Every file you create must go in one of these folders. No random scripts in the root directory (except `run_all.py` and config files).
+**Rule:** Every file goes in one of these folders. Only config files (`.gitignore`,
+`requirements.txt`, `README.md`) belong in the root.
 
 ---
 
 ## Step 4: Create Python Package Files
 
-Python needs a special file called `__init__.py` in each folder to treat it as a "package" (a collection of related code).
-
-Create these four files:
+Python needs `__init__.py` in each folder to treat it as a package. Without it,
+`from data_ingestion.ingest import load_data` will not work.
 
 **File: `data_ingestion/__init__.py`**
 ```python
@@ -110,15 +109,13 @@ Create these four files:
 # Nigerian Inflation Predictor — Simulation Module
 ```
 
-**How to create these:** Open each file in any text editor (VS Code, Notepad++, nano), type the single comment line, and save.
-
-**Why `__init__.py`?** Without this file, Python cannot import code between folders. For example, later you will write `from data_ingestion.ingest import load_raw_data` — this only works if `data_ingestion/__init__.py` exists.
+Each file contains one comment line — nothing else. Create them in any text editor.
 
 ---
 
 ## Step 5: Create `.gitignore`
 
-This file tells git which files to NOT track. You don't want to commit temporary files, virtual environments, or large data files.
+Tells Git which files to never track — temp files, virtual environments, IDE settings.
 
 **File: `.gitignore`**
 ```
@@ -127,70 +124,67 @@ __pycache__/
 *.py[cod]
 *.egg-info/
 
-# Virtual environment (you'll create this later)
+# Virtual environment
 venv/
 .venv/
 
 # Environment variables (may contain passwords)
 .env
 
-# IDE settings
+# IDE and editor settings
 .idea/
 .vscode/
 *.swp
+*.swo
+*~
 
-# Large Excel files (we use CSV instead)
+# Large Excel files (we use CSV)
 data/raw/*.xlsx
 data/raw/*.xls
 
-# Java build output (for the API later)
+# Java build output (Spring Boot API)
 api/target/
 api/build/
+api/.gradle/
 
 # Jupyter notebook checkpoints
 .ipynb_checkpoints/
+
+# OS-generated files
+.DS_Store
+Thumbs.db
 ```
 
-**How to create this:** Create a file called `.gitignore` (note the dot at the start) in your project root. The dot makes it a hidden file on Mac/Linux — that's normal.
+Create this file in your project root. The leading dot makes it hidden on Mac/Linux.
 
 ---
 
 ## Step 6: Create `.gitkeep` Files
 
-Git doesn't track empty folders. Since `data/raw/`, `data/processed/`, `results/`, and `api/` are empty right now, we add a tiny placeholder file to each so git remembers they exist.
-
-Create four empty files:
-- `data/raw/.gitkeep`
-- `data/processed/.gitkeep`
-- `results/.gitkeep`
-- `api/.gitkeep`
-
-These files have no content — just create them as empty files.
+Git ignores empty folders. We add placeholder files so Git remembers them.
 
 ```bash
 touch data/raw/.gitkeep data/processed/.gitkeep results/.gitkeep api/.gitkeep
 ```
 
-(On Windows without `touch`, just create empty text files with those names.)
+These files are empty — their only job is to preserve the folder in Git.
+
+> **Windows:** If `touch` is not recognised, use `type nul > data\raw\.gitkeep`.
 
 ---
 
 ## Step 7: Create `requirements.txt`
 
-This file lists the Python packages your project needs. We start empty and add packages as we need them.
-
 **File: `requirements.txt`**
 ```
 # Python dependencies for Nigerian Inflation Predictor.
-# Added one at a time as each module is built.
-# Do NOT install everything at once.
+# Packages are added one at a time as each module is built.
+# Do NOT install everything at once — add as you go.
 ```
 
 ---
 
 ## Step 8: Create `README.md`
-
-This is the first thing anyone sees when they open your project. Write it like a thesis abstract.
 
 **File: `README.md`**
 ```markdown
@@ -198,52 +192,124 @@ This is the first thing anyone sees when they open your project. Write it like a
 
 ## Overview
 
-A research-grade inflation prediction system for Nigeria that models
-the transmission of monetary policy shocks to consumer price inflation
-using time-series econometric methods.
+A research-grade inflation prediction system for Nigeria that models the transmission
+of monetary policy shocks to consumer price inflation using time-series econometric
+methods. The system traces how changes in the CBN Monetary Policy Rate (MPR) transmit
+through the money market (via treasury bill rates) and the foreign exchange market
+(via the official exchange rate) to ultimately affect headline consumer price inflation.
+This chain — policy rate to money market to exchange rate to prices — is the core
+identification strategy.
 
-**Central question:** How do changes in the CBN's Monetary Policy Rate
-transmit through the exchange rate and money supply channels to affect
-headline inflation, and over what horizon?
+## Dataset: All 34 Columns
 
-## Variables (Monthly Data)
+The raw data file `cbn_infl_data.csv` contains 34 monthly variables from the CBN and NBS.
 
-| Variable | Description | Source |
-|----------|-------------|--------|
-| MPR | Monetary Policy Rate (%) | Central Bank of Nigeria |
-| Inflation | Headline CPI inflation (%, YoY) | National Bureau of Statistics |
-| Exchange Rate | Naira per US Dollar (NGN/USD) | CBN |
-| M2 | Broad Money Supply (NGN billions) | CBN Statistical Bulletin |
+### Monetary Policy Variables
+
+| Column | Description |
+|---|---|
+| `date` | Observation date (YYYY-MM-DD, first of month) |
+| `mpr` | **Monetary Policy Rate (%)** — CBN benchmark interest rate |
+| `omo` | Open Market Operations rate (%) |
+| `crr` | Cash Reserve Ratio (%) |
+| `lr` | Liquidity Ratio (%) |
+
+### Inflation Variables
+
+| Column | Description |
+|---|---|
+| `infl` | **Headline inflation rate (%, YoY)** — all-items CPI |
+| `inflcore` | Core inflation rate (%, YoY) — excludes food and energy |
+| `inflfood` | Food inflation rate (%, YoY) |
+
+### Consumer Price Indices (CPI)
+
+| Column | Description |
+|---|---|
+| `fcpi` | Food CPI (composite) |
+| `ccpi` | Core CPI (composite) |
+| `acpi` | All-items CPI (composite) |
+| `fcpi_r` | Food CPI (rural) |
+| `ccpi_r` | Core CPI (rural) |
+| `acpi_r` | All-items CPI (rural) |
+| `fcpi_u` | Food CPI (urban) |
+| `ccpi_u` | Core CPI (urban) |
+| `acpi_u` | All-items CPI (urban) |
+
+### Exchange Rate Variables
+
+| Column | Description |
+|---|---|
+| `exo` | **Official exchange rate (NGN/USD)** — CBN official rate |
+| `exbdc` | Bureau de Change exchange rate (NGN/USD) |
+| `neer` | Nominal Effective Exchange Rate (index) |
+| `reer` | Real Effective Exchange Rate (index) |
+
+### Interest Rate Variables
+
+| Column | Description |
+|---|---|
+| `sr` | Savings rate (%) |
+| `tbr` | **91-day Treasury Bill Rate (%)** — money market benchmark |
+| `ir7d` | Interbank rate, 7-day (%) |
+| `ir1m` | Interbank rate, 1-month (%) |
+| `ir3m` | Interbank rate, 3-month (%) |
+| `ir6m` | Interbank rate, 6-month (%) |
+| `ir12m` | Interbank rate, 12-month (%) |
+| `irover12m` | Interbank rate, over 12-month (%) |
+| `plr` | Prime Lending Rate (%) |
+| `mlr` | Maximum Lending Rate (%) |
+| `icr` | Interbank Call Rate (%) |
+| `obb` | Open Buy Back rate (%) |
+
+### Capital Market Variables
+
+| Column | Description |
+|---|---|
+| `mktcap` | Stock market capitalisation (NGN) |
+| `asi` | All Share Index |
+
+### Core 4 Modeling Variables
+
+| Variable | Column | Role in Model |
+|---|---|---|
+| Monetary Policy Rate | `mpr` | Policy instrument — the shock variable |
+| Treasury Bill Rate | `tbr` | Money market transmission channel |
+| Official Exchange Rate | `exo` | Exchange rate pass-through channel |
+| Headline Inflation | `infl` | Target variable — what we predict |
 
 ## Models
 
-1. **ARDL** — Bounds testing for cointegration, short-run and long-run coefficients
-2. **VAR** — With Cholesky identification (ordering: MPR -> EXR -> M2 -> INF)
-3. **Impulse Response Functions** — 12-24 month horizon
-4. **Forecast Error Variance Decomposition**
-5. **Policy simulation** — +100 basis point MPR shock
+1. **ARDL Bounds Testing** — cointegration, short-run and long-run coefficients
+2. **VAR** — Cholesky ordering: MPR -> TBR -> EXO -> INF
+3. **Impulse Response Functions** — +100bps MPR shock over 12-24 months
+4. **Forecast Error Variance Decomposition** — inflation variance attribution
+5. **Policy Simulation** — +100bps MPR shock traced through TBR and EXO to inflation
 
 ## Project Structure
 
-    Nigerian_Inflation_Predictor/
-    ├── data/raw/              # Original datasets from CBN/NBS
-    ├── data/processed/        # Cleaned, analysis-ready data
-    ├── data_ingestion/        # Data loading scripts
-    ├── data_processing/       # Cleaning, EDA, stationarity testing
-    ├── econometric_models/    # ARDL, VAR, IRF, FEVD estimation
-    ├── simulation/            # Policy shock simulation
-    ├── api/                   # Java Spring Boot REST API
-    ├── results/               # Generated plots, tables, JSON
-    ├── docs/                  # Methodology documentation
-    ├── guide/                 # Step-by-step build guide
-    └── requirements.txt       # Python dependencies
+```
+Nigerian_Inflation_Predictor/
+├── data/raw/                  # Original datasets from CBN/NBS
+├── data/processed/            # Cleaned, analysis-ready data
+├── data_ingestion/            # Data loading and validation scripts
+├── data_processing/           # Cleaning, EDA, stationarity testing
+├── econometric_models/        # ARDL, VAR, IRF, FEVD estimation
+├── simulation/                # Policy shock simulation
+├── api/                       # Java Spring Boot REST API
+├── results/                   # Generated plots, tables, JSON
+├── docs/                      # Methodology and data documentation
+├── guide/                     # Step-by-step build guide
+├── requirements.txt           # Python dependencies
+└── README.md                  # This file
+```
 
 ## Tech Stack
 
-| Layer | Technology | Why |
-|-------|-----------|-----|
-| Modeling | Python 3, pandas, numpy, statsmodels | Industry-standard for applied econometrics |
-| API | Java 17, Spring Boot | Production-grade REST layer for financial systems |
+| Layer | Technology | Purpose |
+|---|---|---|
+| Modeling | Python 3.10+, pandas, statsmodels | Time-series econometrics and data processing |
+| API | Java 17, Spring Boot | Production-grade REST API for serving predictions |
 | Database | PostgreSQL | Structured time-series storage with ACID compliance |
 ```
 
@@ -251,100 +317,112 @@ headline inflation, and over what horizon?
 
 ## Step 9: Create `docs/data_sources.md`
 
-This documents exactly where your data comes from. An examiner will ask.
+Documents where your data comes from and what each variable means. An examiner will
+ask — having this written down protects you.
 
 **File: `docs/data_sources.md`**
 ```markdown
 # Data Sources — Nigerian Inflation Predictor
 
-All data is monthly frequency, sourced from Nigerian official statistics.
+All data is monthly frequency, sourced from official Nigerian statistical agencies.
+The raw data file is `cbn_infl_data.csv` and contains 34 columns. The core econometric
+model uses 4 of these: `mpr`, `tbr`, `exo`, and `infl`. The remaining 30 columns are
+available for robustness checks.
 
-## 1. Monetary Policy Rate (MPR)
+---
+
+## Core Variable 1: Monetary Policy Rate (MPR)
 
 - **Column name in CSV:** `mpr`
 - **Unit:** Percent per annum (%)
-- **What it is:** The interest rate set by the Central Bank of Nigeria's
-  Monetary Policy Committee (MPC). This is the rate at which the CBN lends
-  to commercial banks. When the CBN raises the MPR, it is "tightening"
-  monetary policy — making borrowing more expensive.
+- **What it is:** The benchmark interest rate set by the CBN Monetary Policy
+  Committee (MPC). This is the rate at which the CBN lends to commercial banks.
+  When the MPC raises the MPR, borrowing becomes more expensive economy-wide.
+- **How it is set:** The MPC meets roughly every two months (six times a year).
+  Between meetings the rate stays constant — repeated values are normal, not
+  missing data.
 - **Source:** Central Bank of Nigeria
 - **URL:** https://www.cbn.gov.ng/rates/mnymktind.asp
-- **Note:** The MPC meets roughly every 2 months. Between meetings, the
-  MPR stays constant. This is normal — repeated values are NOT missing data.
+- **Role in model:** Shock variable. We simulate a +100 basis point MPR increase.
 
-## 2. Headline Inflation Rate
+## Core Variable 2: Headline Inflation Rate
 
-- **Column name in CSV:** `inflation`
+- **Column name in CSV:** `infl`
 - **Unit:** Percent, year-on-year (%)
-- **What it is:** How much consumer prices have risen compared to the same
-  month last year. If inflation is 15%, prices are 15% higher than a year ago.
-  This is the number the CBN is trying to control.
-- **Source:** National Bureau of Statistics (NBS)
+- **What it is:** How much consumer prices have risen compared to the same month
+  one year ago. This is the number the CBN targets and newspapers report.
+- **Important:** The column is `infl`, not `inflation`. Do not rename it.
+- **Source:** National Bureau of Statistics (NBS) — CPI and Inflation Report
 - **URL:** https://nigerianstat.gov.ng/
-- **Note:** We use headline inflation (all items), not core inflation.
-  Headline is what the CBN targets and what the public experiences.
+- **Role in model:** Target variable — what we predict.
 
-## 3. Exchange Rate (Naira/USD)
+## Core Variable 3: Official Exchange Rate
 
-- **Column name in CSV:** `exchange_rate`
+- **Column name in CSV:** `exo`
 - **Unit:** Nigerian Naira per 1 US Dollar (NGN/USD)
-- **What it is:** How many Naira you need to buy one US Dollar. If the
-  exchange rate goes from 400 to 800, the Naira has lost half its value
-  (depreciated). This matters for inflation because Nigeria imports many
-  goods — when the Naira weakens, imports cost more, pushing up prices.
-- **Source:** Central Bank of Nigeria
+- **What it is:** The official CBN exchange rate. When this rises the Naira has
+  depreciated. This matters because Nigeria imports many goods — a weaker Naira
+  means imports cost more, pushing up consumer prices (exchange rate pass-through).
+- **Important:** The column is `exo`, not `exchange_rate`. Do not rename it.
+- **Source:** Central Bank of Nigeria — Exchange Rate by Currency
 - **URL:** https://www.cbn.gov.ng/rates/ExchRateByCurrency.asp
-- **Note:** Nigeria has had multiple exchange rate windows (official, BDC,
-  I&E). Use one consistent series. The June 2023 unification caused a
-  large jump — this is a real event, not a data error.
+- **Note:** In June 2023 the CBN unified multiple exchange rate windows into a
+  single market-determined rate, causing a large jump (roughly 460 to 750+). This
+  is a real policy event, not a data error.
 
-## 4. Broad Money Supply (M2)
+## Core Variable 4: 91-Day Treasury Bill Rate
 
-- **Column name in CSV:** `m2`
-- **Unit:** Nigerian Naira, billions (NGN billions)
-- **What it is:** The total amount of money circulating in the economy.
-  M2 includes cash, demand deposits (current accounts), savings deposits,
-  and time deposits. When M2 grows fast, there is "too much money chasing
-  too few goods" — which can cause inflation.
-- **Source:** CBN Statistical Bulletin
-- **URL:** https://www.cbn.gov.ng/documents/Statbulletin.asp
-- **Note:** M2 is a stock variable (measured at month-end). For modeling,
-  we will take the natural logarithm of M2 during data processing.
+- **Column name in CSV:** `tbr`
+- **Unit:** Percent per annum (%)
+- **What it is:** The interest rate on 91-day Nigerian Treasury Bills — the most
+  liquid instrument in the money market, auctioned by the CBN.
+- **Why it matters:** TBR captures how MPR transmits into the money market. When
+  the CBN raises the MPR, commercial banks adjust and this shows up in T-bill
+  auction results. TBR is the first link in the chain: MPR -> TBR -> EXO -> INF.
+- **Source:** Central Bank of Nigeria — Treasury Bills Auction Results
+- **URL:** https://www.cbn.gov.ng/rates/mnymktind.asp
+- **Role in model:** Sits between MPR and EXO in the Cholesky ordering.
 
-## Sample Period
+---
 
-January 2000 to December 2024 (300 months).
+## Full CSV Format
 
-## CSV File Format
+| Column | Type | Format | Example |
+|---|---|---|---|
+| `date` | Date | YYYY-MM-DD (first of month) | 2023-06-01 |
+| `mpr` | Numeric | Percentage | 18.75 |
+| `tbr` | Numeric | Percentage | 5.50 |
+| `exo` | Numeric | NGN per USD | 750.42 |
+| `infl` | Numeric | Percentage (YoY) | 22.79 |
 
-All raw data must be in this exact format:
+### All 34 column names in order
 
-| Column | Format | Example |
-|--------|--------|---------|
-| `date` | YYYY-MM-DD (first of month) | 2020-01-01 |
-| `mpr` | Number | 13.50 |
-| `inflation` | Number | 12.13 |
-| `exchange_rate` | Number | 360.50 |
-| `m2` | Number | 81950.30 |
+```
+date, mpr, omo, crr, lr, tbr, infl, inflcore, inflfood, fcpi, ccpi, acpi,
+fcpi_r, ccpi_r, acpi_r, fcpi_u, ccpi_u, acpi_u, exo, exbdc, neer, reer,
+sr, ir7d, ir1m, ir3m, ir6m, ir12m, irover12m, plr, mlr, icr, obb, mktcap, asi
+```
 
-Missing values: leave empty or write NaN. Never use 0 for missing data.
+Missing values: leave empty or write `NaN`. Never use 0 — zero is a valid number.
 ```
 
 ---
 
 ## Step 10: First Git Commit
 
-Now save everything to git:
+Save everything to Git:
 
 ```bash
 git add -A
 git commit -m "Day 1: Initialize project skeleton, folder structure, and documentation"
 ```
 
-**What you should see:**
+`git add -A` stages every new file. `git commit -m` creates a permanent snapshot.
+
+**Expected output:**
 ```
-[main (root-commit) xxxxxxx] Day 1: Initialize project skeleton...
- X files changed, Y insertions(+)
+[main (root-commit) abc1234] Day 1: Initialize project skeleton, folder structure, and documentation
+ 13 files changed, X insertions(+)
  create mode 100644 .gitignore
  create mode 100644 README.md
  ...
@@ -353,8 +431,6 @@ git commit -m "Day 1: Initialize project skeleton, folder structure, and documen
 ---
 
 ## Verify Your Work
-
-Run this command to see your project structure:
 
 ```bash
 find . -not -path './.git/*' -type f | sort
@@ -376,49 +452,72 @@ find . -not -path './.git/*' -type f | sort
 ./simulation/__init__.py
 ```
 
-If you see all of these, Day 1 is complete.
+If you see all 13 files, Day 1 is complete.
 
 ---
 
 ## Common Errors
 
-| Problem | Solution |
-|---------|----------|
-| `git: command not found` | Install git: https://git-scm.com/downloads |
-| `python: command not found` | Install Python. On some systems, use `python3` instead of `python` |
-| Can't create `.gitignore` (Windows hides it) | In File Explorer, make sure "Show hidden files" is enabled |
-| `mkdir -p` doesn't work on Windows | Use `mkdir data\raw` and `mkdir data\processed` separately |
+| Problem | Cause | Solution |
+|---|---|---|
+| `git: command not found` | Git not installed | https://git-scm.com/downloads |
+| `python: command not found` | Python not installed or not on PATH | https://www.python.org/downloads/ — try `python3` on some systems |
+| Cannot create `.gitignore` | Windows hides dot-files | Enable "Show hidden files" in Explorer, or create via terminal |
+| `mkdir -p` fails on Windows CMD | `-p` is Linux/Mac only | Run `mkdir data\raw` and `mkdir data\processed` separately |
+| Git says "nothing to commit" | Already committed or files not saved | Run `git status` — if clean, you already committed successfully |
+| `touch` not recognised (Windows) | `touch` is Linux/Mac | Use `type nul > filename` in CMD |
 
 ---
 
 ## Check Your Understanding
 
-An examiner or interviewer might ask:
+Practice answering these out loud before moving on.
 
-1. **"Why do you separate raw and processed data?"**
-   > Raw data is exactly as downloaded from CBN/NBS — never modified. Processed data has been cleaned and transformed. Keeping them separate means you can always trace back to the original source.
+**1. "Why do you separate raw data from processed data?"**
 
-2. **"Why use git for an academic project?"**
-   > Git provides version control — every change is recorded. If a model breaks after an edit, I can see exactly what changed and revert. It also provides a complete audit trail of the research process.
+> Raw data in `data/raw/` is the original file exactly as downloaded — never modified.
+> Processed data in `data/processed/` is the cleaned version ready for modeling.
+> Keeping them separate means I can always trace any result back to the original
+> source. This is a basic principle of reproducible research.
 
-3. **"Why not just put all Python files in one folder?"**
-   > Separating by function (ingestion, processing, models, simulation) enforces modularity. Each module has a single responsibility. This makes the code easier to test, debug, and explain.
+**2. "Your CSV has 34 columns but your model uses 4. Why not use all of them?"**
+
+> The 4 core variables — `mpr`, `tbr`, `exo`, `infl` — represent a specific economic
+> transmission chain: policy rate to money market to exchange rate to prices. Adding
+> variables without theoretical justification overfits the model. The other 30 columns
+> are available for robustness checks, but the core model must be parsimonious.
+
+**3. "What is the Cholesky ordering MPR, TBR, EXO, INF and why does it matter?"**
+
+> The ordering imposes a recursive structure in the VAR: MPR is set by the CBN and
+> does not respond to other variables within the same month. TBR responds to MPR but
+> not to EXO or INF contemporaneously. EXO responds to policy rates but not to
+> inflation within the month. Inflation is last because prices are slowest to adjust.
+> This reflects the actual speed of transmission in the Nigerian economy.
 
 ---
 
 ## What You Built Today
 
-| Item | File/Folder | Purpose |
-|------|------------|---------|
-| Project root | `Nigerian_Inflation_Predictor/` | Everything lives here |
-| Data folders | `data/raw/`, `data/processed/` | Raw and cleaned data |
-| Python modules | `data_ingestion/`, `data_processing/`, `econometric_models/`, `simulation/` | Code organized by function |
-| API folder | `api/` | Java Spring Boot (Week 6) |
-| Output folder | `results/` | Generated plots and tables |
-| Documentation | `docs/data_sources.md` | Where data comes from |
-| Config files | `.gitignore`, `requirements.txt` | Project configuration |
-| README | `README.md` | Project overview |
+| Item | File or Folder | Purpose |
+|---|---|---|
+| Project root | `Nigerian_Inflation_Predictor/` | Top-level container |
+| Raw data folder | `data/raw/` | Stores `cbn_infl_data.csv` exactly as downloaded |
+| Processed data folder | `data/processed/` | Stores cleaned, model-ready data |
+| Ingestion package | `data_ingestion/__init__.py` | Python package for loading raw data |
+| Processing package | `data_processing/__init__.py` | Python package for cleaning and testing |
+| Models package | `econometric_models/__init__.py` | Python package for ARDL, VAR, IRF, FEVD |
+| Simulation package | `simulation/__init__.py` | Python package for policy shock simulation |
+| API folder | `api/` | Placeholder for Java Spring Boot API |
+| Results folder | `results/` | Generated plots, tables, and JSON outputs |
+| Git configuration | `.gitignore` | Tells Git which files to ignore |
+| Dependencies | `requirements.txt` | Python packages (empty for now) |
+| Project overview | `README.md` | Full description with all 34 variables |
+| Data documentation | `docs/data_sources.md` | Documents the 4 core variables and sources |
+| Git repository | `.git/` | Version control — tracks every change |
 
 **Packages installed today:** None. Day 1 is structural only.
 
-**Tomorrow (Day 2):** You'll install `pandas` and learn the Python fundamentals needed for this project.
+**Tomorrow (Day 2):** You will create a Python virtual environment, install `pandas`,
+and write the data ingestion script that loads `cbn_infl_data.csv` and validates all
+34 columns.

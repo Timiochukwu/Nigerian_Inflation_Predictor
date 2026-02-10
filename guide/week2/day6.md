@@ -1,4 +1,4 @@
-# Week 2, Day 6 — Stationarity Testing: The ADF Test
+# Week 2, Day 6 -- Stationarity Testing: The ADF Test
 
 ## What You'll Learn Today
 
@@ -6,21 +6,24 @@
 - What stationarity is and why it matters for econometrics
 - What the Augmented Dickey-Fuller (ADF) test does
 - How to test all four variables in levels and first differences
+- How to determine the integration order of each variable
 - How to interpret the results for Nigerian macroeconomic data
 
 ## Why This Matters
 
-You are about to cross the line from descriptive analysis into formal econometrics. Everything you did in Week 1 — loading data, cleaning it, computing statistics, making plots — was preparation. Starting today, you are doing the actual statistical testing that your thesis or research paper will be built on.
+You are about to cross the line from descriptive analysis into formal econometrics. Everything you did in Week 1 -- loading data, cleaning it, computing statistics, making plots -- was preparation. Starting today, you are doing the actual statistical testing that your thesis or research paper will be built on.
 
-The single most important concept in time series econometrics is **stationarity**. If you do not test for stationarity before fitting a model, your results will be wrong. Not slightly wrong — completely, fundamentally wrong. You will get regression results that look impressive (high R-squared, significant t-statistics) but are actually meaningless. This is called "spurious regression," and it has ruined more undergraduate theses than any other mistake.
+The single most important concept in time series econometrics is **stationarity**. If you do not test for stationarity before fitting a model, your results will be wrong. Not slightly wrong -- completely, fundamentally wrong. You will get regression results that look impressive (high R-squared, significant t-statistics) but are actually meaningless. This is called **spurious regression**, and it has ruined more undergraduate theses than any other mistake.
 
-Today you will learn what stationarity means, why it matters, how to test for it using the Augmented Dickey-Fuller (ADF) test, and what the results mean for your Nigerian data. By the end of today, you will have a clear answer to the question every examiner asks: "Are your variables stationary?"
+Here is the practical problem. Suppose you regress the exchange rate (exo) on the monetary policy rate (mpr). Both variables trend upward over 2000-2024. Your regression will report a high R-squared and a significant coefficient -- not because the MPR genuinely explains the exchange rate, but because both variables happen to increase over time. They are correlated with time itself, not necessarily with each other. Granger and Newbold (1974) proved this formally: when you regress one non-stationary (trending) series on another, the standard t-tests and F-tests give you false positives almost every time.
+
+The solution is simple: **test for stationarity before you fit any model.** That is what today is about. By the end of today, you will have a formal, statistical answer to the question every examiner asks: "Are your variables stationary?"
 
 ---
 
 ## Step 1: Install New Packages
 
-You need two new packages today. Update your `requirements.txt` so it reads exactly:
+You need two new packages today. Delete everything in `requirements.txt` and replace it with this:
 
 ```
 pandas==2.1.4
@@ -35,7 +38,7 @@ Then install everything:
 pip install -r requirements.txt
 ```
 
-**What you should see:** A lot of download and installation text. statsmodels has several dependencies (scipy, patsy, packaging), so expect more output than usual. It should end with `Successfully installed` followed by a list of packages.
+**What you should see:** A lot of download and installation text. statsmodels has several dependencies (scipy, patsy, packaging), so expect more output than usual. It should end with `Successfully installed` followed by a list of packages, or it will say the requirements are already satisfied if you have them.
 
 Verify both packages installed correctly:
 
@@ -48,89 +51,45 @@ The first should print `1.26.2`. The second should print `0.14.1`.
 
 **What these packages are:**
 
-- **numpy** (Numerical Python) is Python's foundational library for numerical computing. It provides fast array operations, linear algebra, random number generation, and mathematical functions. Almost every scientific Python library (pandas, statsmodels, matplotlib) is built on top of numpy. When statsmodels runs the ADF test, it is doing matrix math with numpy under the hood.
+- **numpy** (Numerical Python) is Python's foundational library for numerical computing. It provides fast array operations, linear algebra, random number generation, and mathematical functions. Almost every scientific Python library (pandas, statsmodels, matplotlib) is built on top of numpy. When statsmodels runs the ADF test, it is doing matrix math with numpy under the hood. You will not call numpy functions directly today, but statsmodels needs it to work.
 
 - **statsmodels** is Python's econometrics library. It contains everything you need for time series analysis: ADF tests, KPSS tests, ARDL models, VAR models, impulse response functions, Granger causality tests, cointegration tests, and much more. If pandas is your data manipulation tool and matplotlib is your plotting tool, statsmodels is your econometrics tool. You will use it every day from now until the end of this project.
 
 ---
 
-## Theory: What is Stationarity and Why It Matters
+## Theory: What Is Stationarity?
 
-This section is long. Read it carefully. Understanding stationarity is not optional — it is the foundation of everything you will do for the next seven weeks.
+This section is long. Read it carefully. Understanding stationarity is not optional -- it is the foundation of everything you will do for the next several weeks.
 
-### What Stationarity Means
+A **stationary** time series has three properties that remain constant over time:
 
-A **stationary** time series has three properties:
+1. **Constant mean.** The average value of the series does not drift upward or downward. If you split the series in half and compute the mean of each half, the two means should be roughly the same.
 
-1. **Constant mean.** The average value of the series does not change over time. If you take the mean of the first 100 observations and the mean of the last 100 observations, they should be roughly the same.
+2. **Constant variance.** The spread of the series does not change over time. If it fluctuates by plus or minus 2 percentage points in the first half of the sample, it should fluctuate by roughly the same amount in the second half.
 
-2. **Constant variance.** The spread of the series does not change over time. If the series fluctuates by plus or minus 2 in the first half, it should fluctuate by roughly plus or minus 2 in the second half as well.
-
-3. **Autocovariance depends only on the lag, not on time.** The correlation between an observation and the observation 3 months ago is the same whether you are looking at 2005 or 2020.
+3. **Autocovariance depends only on the lag, not on time.** The correlation between an observation and the observation 3 months earlier is the same whether you are looking at 2005 or 2020.
 
 Informally: a stationary series "looks the same" no matter where you slice it. If you covered up the x-axis dates, you would not be able to tell which part of the series came first and which came last.
 
-A **non-stationary** series violates one or more of these properties. The most common violation in economic data is a **trend** — the mean changes over time. A series that trends upward has a higher mean at the end than at the beginning. That alone makes it non-stationary.
+Think about it with Nigerian data. Inflation (infl) has been accelerating since 2020, climbing from about 12% to above 33%. If you compute the average inflation for 2000-2012 and then for 2013-2024, you get very different numbers. That tells you the mean is not constant -- inflation is non-stationary. Now think about the exchange rate (exo). It went from about 92 naira per dollar in 2000 to over 1,500 in 2024. That is obviously trending -- the mean changes dramatically over time. Non-stationary.
 
-### Why It Matters: Spurious Regression
+**Why this matters: spurious regression.** When you regress one non-stationary series on another, the standard statistical tests (t-tests, F-tests, R-squared) become unreliable. You will almost always get a significant result, even when the two variables have no genuine relationship. The residuals from such a regression are not white noise -- they are autocorrelated and non-stationary themselves. Every conclusion you draw is built on a false foundation.
 
-Here is the critical problem. Suppose you have two time series that are both trending upward over 25 years, but they have absolutely nothing to do with each other. Maybe one is Nigeria's exchange rate and the other is the number of mobile phone subscriptions in Brazil. If you run a simple regression of one on the other, you will get:
+**What the ADF test does.** The Augmented Dickey-Fuller test is the most widely used test for stationarity. It works like this:
 
-- A high R-squared (maybe 0.85 or higher)
-- A highly significant t-statistic (p-value near zero)
-- The appearance that one variable "explains" the other
+- **Null hypothesis (H0):** The series HAS a unit root -- it is non-stationary.
+- **Alternative hypothesis (H1):** The series does NOT have a unit root -- it is stationary.
 
-But the relationship is completely fake. The only reason you got significant results is that both series happen to trend upward. They are correlated with time, not with each other.
+Notice the null is non-stationarity. This makes the test conservative: you need strong evidence (p-value below 0.05) to conclude stationarity. If the evidence is ambiguous, the default conclusion is "non-stationary."
 
-This is called **spurious regression**. Granger and Newbold (1974) demonstrated this problem in a famous paper, and it is one of the most important results in econometrics. The key finding: when you regress one non-stationary series on another, the standard statistical tests (t-tests, F-tests, R-squared) are unreliable. They will almost always tell you the relationship is significant, even when it is not.
+- If the **p-value < 0.05**: reject the null. The series IS stationary.
+- If the **p-value >= 0.05**: fail to reject the null. The series is NOT stationary (it has a unit root).
 
-The solution: **you must test for stationarity before fitting any model.** If the variables are non-stationary, you need to either difference them (make them stationary) or use special techniques like cointegration that are designed for non-stationary data. You cannot just run a regression and hope for the best.
-
-### The Augmented Dickey-Fuller (ADF) Test
-
-The ADF test is the most widely used test for stationarity. Here is how it works:
-
-- **Null hypothesis (H0):** The series HAS a unit root. In other words, the series is non-stationary.
-- **Alternative hypothesis (H1):** The series does NOT have a unit root. The series is stationary.
-
-Notice that the null hypothesis is non-stationarity, not stationarity. This means the test is conservative — you need strong evidence to conclude that a series is stationary. If the evidence is ambiguous, the test defaults to "non-stationary."
-
-**How to read the results:**
-
-- If the **p-value < 0.05**: reject the null hypothesis. Conclude the series IS stationary. We call this I(0) — "integrated of order zero."
-- If the **p-value >= 0.05**: fail to reject the null. Conclude the series is NON-stationary. It needs differencing.
-
-**What about the test statistic and critical values?** The test statistic is a number (usually negative). The more negative it is, the stronger the evidence against the null. The critical values tell you the threshold: if the test statistic is more negative than the critical value at the 5% level, you reject the null. The p-value gives you the same information in a more intuitive form, so most people just look at the p-value.
-
-### First Differencing and Integration Order
-
-When a series is non-stationary, we take its **first difference**: the change from one period to the next.
-
-If the original series is `y_t`, the first difference is `y_t - y_{t-1}`. In pandas, this is `df["inflation"].diff()`.
-
-For example, if inflation in January is 15% and in February is 16%, the first difference is +1 percentage point. The first difference captures the *change* in the variable rather than its *level*.
-
-We then run the ADF test on the first difference. If the first difference is stationary, we say the original series is **I(1)** — "integrated of order 1." This means you need to difference it once to make it stationary.
-
-If the first difference is still non-stationary, we take the second difference (the change in the change) and test again. If that is stationary, the series is I(2). In practice, most economic variables are either I(0) or I(1). I(2) is rare.
-
-### What to Expect for Nigerian Data
-
-Before you run the test, let us predict what you will find based on the EDA you did on Day 5:
-
-- **Inflation:** Likely non-stationary in levels because of the strong upward trend since 2020. Inflation went from 12% to 35% — the mean is clearly not constant. After differencing (the month-to-month change in inflation), it should become stationary. Prediction: I(1).
-
-- **MPR:** Likely non-stationary in levels. The MPR was around 11-14% for years, then shot up to 27.5% in 2023-2024. That is a trend, even though it moves in discrete steps. After differencing, the month-to-month changes should be stationary. Prediction: I(1). Note: the MPR might be borderline because it is held constant for months at a time. The ADF test may struggle with this "step function" behaviour.
-
-- **Exchange rate:** Definitely non-stationary in levels. You saw the structural breaks in 2016 and 2023 on Day 5. The rate went from 92 to 1,680 over the sample period. After differencing, the month-to-month changes should be stationary. Prediction: I(1).
-
-- **M2 (money supply):** Exponential growth makes it non-stationary. The mean, variance, and every other property change dramatically over the sample. After differencing, the month-to-month changes in M2 should be stationary. Prediction: I(1).
-
-If all four variables turn out to be I(1), that is a very important result. It means they all need differencing before standard regression, but it also opens the door to **cointegration testing** — the possibility that these non-stationary variables share a long-run equilibrium relationship. We will explore that on Day 8-9.
+When a series is non-stationary in levels (its original form), we take its **first difference** -- the change from one month to the next. If the first difference is stationary, we say the original series is **I(1)** -- "integrated of order 1." If the original series is already stationary without differencing, it is **I(0)** -- "integrated of order 0." Most Nigerian macroeconomic variables are I(1).
 
 ---
 
-## Building `econometric_models/stationarity.py` — Step by Step
+## Building `econometric_models/stationarity.py` -- Step by Step
 
 At each step, we show you the **complete file** from the first line to the last line. Delete everything in `econometric_models/stationarity.py` and replace it with exactly what is shown. No guessing where to put things.
 
@@ -138,13 +97,16 @@ Make sure you have an `econometric_models/` folder with an `__init__.py` inside 
 
 ---
 
-### Build Step 1: Create the File with Imports and Data Loading
+### Build Step 1: Imports, Load Data, Print First 5 Rows
 
-Create a new file called `econometric_models/stationarity.py`. Your complete file should look like this:
+Create a new file called `econometric_models/stationarity.py`. Delete everything in `econometric_models/stationarity.py` and replace it with this:
 
 ```python
+"""Stationarity testing for the Nigerian Inflation Predictor."""
 import os
+import sys
 import pandas as pd
+import numpy as np
 from statsmodels.tsa.stattools import adfuller
 
 PROCESSED_DIR = os.path.join(os.path.dirname(__file__), "..", "data", "processed")
@@ -159,8 +121,9 @@ def load_data():
 
 if __name__ == "__main__":
     df = load_data()
-    print(f"Loaded {len(df)} rows")
-    print(f"Columns: {list(df.columns)}")
+    print(f"Data loaded: {df.shape[0]} observations, {df.shape[1]} variables")
+    print(f"Period: {df.index[0].strftime('%Y-%m')} to {df.index[-1].strftime('%Y-%m')}")
+    print(f"\nFirst 5 rows:")
     print(df.head())
 ```
 
@@ -173,35 +136,46 @@ python -m econometric_models.stationarity
 **What you should see:**
 
 ```
-Loaded 300 rows
-Columns: ['mpr', 'inflation', 'exchange_rate', 'm2']
-              mpr  inflation  exchange_rate       m2
+Data loaded: 300 observations, 4 variables
+Period: 2000-01 to 2024-12
+
+First 5 rows:
+             mpr   infl    exo    tbr
 date
-2000-01-01  13.5       6.62          92.34   1070.50
-2000-02-01  13.5       6.93          92.55   1078.20
-...
+2000-01-01  13.5   6.62  92.34  12.00
+2000-02-01  13.5   6.93  92.55  11.50
+2000-03-01  13.5   7.87  92.69  11.80
+2000-04-01  13.5   8.13  93.05  12.30
+2000-05-01  13.5   8.68  95.10  13.00
 ```
 
 (Your exact numbers will depend on your data.)
 
-**What just happened — line by line:**
+**What just happened -- line by line:**
 
-- `from statsmodels.tsa.stattools import adfuller` — This imports the ADF test function from statsmodels. The path `tsa.stattools` means "time series analysis, statistical tools." If this line runs without error, statsmodels is installed correctly.
-- `PROCESSED_DIR` and `RESULTS_DIR` — Same pattern as Day 5. Paths relative to the script's location. `os.path.dirname(__file__)` is the folder this script lives in (`econometric_models/`), and `".."` goes up one level to the project root.
-- `load_data()` — Reads the cleaned CSV from Day 4. Same logic as the EDA script: `index_col="date"` makes dates the row index, `parse_dates=True` converts strings to datetime objects.
-- The `if __name__ == "__main__":` block loads the data and prints basic info to confirm everything works.
+- `"""Stationarity testing..."""` -- This is a module-level docstring. It describes what the file does. It appears when someone runs `help()` on your module or reads the code later.
+- `import sys` -- We import this for safety. It gives access to system-level operations. We do not use it directly today, but it is a standard import for scripts that might need to exit early with error messages.
+- `import numpy as np` -- Imports numpy and gives it the short name `np`. This is a universal convention in Python data science. We do not call numpy directly today, but statsmodels requires it internally.
+- `from statsmodels.tsa.stattools import adfuller` -- This imports the ADF test function. The path `tsa.stattools` means "time series analysis, statistical tools." If this line runs without error, statsmodels is installed correctly.
+- `PROCESSED_DIR` and `RESULTS_DIR` -- Paths relative to the script's location. `os.path.dirname(__file__)` is the folder this script lives in (`econometric_models/`), and `".."` goes up one level to the project root.
+- `load_data()` -- Reads the cleaned CSV from Day 4. `index_col="date"` makes dates the row index. `parse_dates=True` converts strings to datetime objects.
+- `df.shape[0]` is the number of rows (observations). `df.shape[1]` is the number of columns (variables).
+- `df.index[0]` is the first date in the dataset. `.strftime('%Y-%m')` formats it as "2000-01" for clean display.
 
 If that ran and printed your data, statsmodels is working. Move on.
 
 ---
 
-### Build Step 2: Add the adf_test Function and Test One Variable
+### Build Step 2: Add the adf_test Function and Test All Variables in Levels
 
 Delete everything in `econometric_models/stationarity.py` and replace it with this:
 
 ```python
+"""Stationarity testing for the Nigerian Inflation Predictor."""
 import os
+import sys
 import pandas as pd
+import numpy as np
 from statsmodels.tsa.stattools import adfuller
 
 PROCESSED_DIR = os.path.join(os.path.dirname(__file__), "..", "data", "processed")
@@ -214,43 +188,48 @@ def load_data():
     return df
 
 
-def adf_test(series, name):
-    """
-    Run the Augmented Dickey-Fuller test on a series.
-
-    Null hypothesis: the series has a unit root (non-stationary).
-    If p-value < 0.05, we reject the null and conclude the series IS stationary.
-    """
+def adf_test(series, variable_name, significance=0.05):
     result = adfuller(series.dropna(), autolag="AIC")
-
-    test_stat = result[0]
+    adf_stat = result[0]
     p_value = result[1]
     lags_used = result[2]
     n_obs = result[3]
     critical_values = result[4]
 
-    print(f"\n{'='*50}")
-    print(f"ADF Test: {name}")
-    print(f"{'='*50}")
-    print(f"Test Statistic:  {test_stat:.4f}")
-    print(f"P-Value:         {p_value:.4f}")
-    print(f"Lags Used:       {lags_used}")
-    print(f"Observations:    {n_obs}")
-    for level, cv in critical_values.items():
-        print(f"Critical Value ({level}): {cv:.4f}")
+    is_stationary = p_value < significance
 
-    if p_value < 0.05:
-        print(f"Conclusion: STATIONARY (reject H0 at 5%)")
-    else:
-        print(f"Conclusion: NON-STATIONARY (fail to reject H0)")
+    print(f"\nADF Test for: {variable_name}")
+    print(f"  ADF Statistic : {adf_stat:.4f}")
+    print(f"  p-value       : {p_value:.4f}")
+    print(f"  Lags Used     : {lags_used}")
+    print(f"  Observations  : {n_obs}")
+    print(f"  Critical Values:")
+    for key, val in critical_values.items():
+        print(f"    {key}: {val:.4f}")
+    print(f"  Result: {'STATIONARY' if is_stationary else 'NON-STATIONARY (has unit root)'}")
 
-    return {"test_statistic": test_stat, "p_value": p_value,
-            "lags_used": lags_used, "stationary": p_value < 0.05}
+    return {
+        "variable": variable_name,
+        "adf_statistic": adf_stat,
+        "p_value": p_value,
+        "lags_used": lags_used,
+        "is_stationary": is_stationary,
+    }
 
 
 if __name__ == "__main__":
     df = load_data()
-    adf_test(df["inflation"], "Inflation (Level)")
+    print(f"Data loaded: {df.shape[0]} observations, {df.shape[1]} variables")
+    print(f"Period: {df.index[0].strftime('%Y-%m')} to {df.index[-1].strftime('%Y-%m')}")
+
+    print("\n" + "=" * 60)
+    print("ADF TESTS -- LEVELS (original data)")
+    print("=" * 60)
+
+    results_levels = []
+    for col in df.columns:
+        result = adf_test(df[col], col)
+        results_levels.append(result)
 ```
 
 **Run it:**
@@ -262,48 +241,75 @@ python -m econometric_models.stationarity
 **What you should see:**
 
 ```
-==================================================
-ADF Test: Inflation (Level)
-==================================================
-Test Statistic:  -1.XXXX
-P-Value:         0.XXXX
-Lags Used:       XX
-Observations:    XXX
-Critical Value (1%): -3.XXXX
-Critical Value (5%): -2.XXXX
-Critical Value (10%): -2.XXXX
-Conclusion: NON-STATIONARY (fail to reject H0)
+Data loaded: 300 observations, 4 variables
+Period: 2000-01 to 2024-12
+
+============================================================
+ADF TESTS -- LEVELS (original data)
+============================================================
+
+ADF Test for: mpr
+  ADF Statistic : -1.XXXX
+  p-value       : 0.XXXX
+  Lags Used     : X
+  Observations  : XXX
+  Critical Values:
+    1%: -3.XXXX
+    5%: -2.XXXX
+    10%: -2.XXXX
+  Result: NON-STATIONARY (has unit root)
+
+ADF Test for: infl
+  ADF Statistic : -1.XXXX
+  p-value       : 0.XXXX
+  ...
+  Result: NON-STATIONARY (has unit root)
+
+ADF Test for: exo
+  ADF Statistic : -0.XXXX
+  p-value       : 0.XXXX
+  ...
+  Result: NON-STATIONARY (has unit root)
+
+ADF Test for: tbr
+  ADF Statistic : -1.XXXX
+  p-value       : 0.XXXX
+  ...
+  Result: NON-STATIONARY (has unit root)
 ```
 
-The p-value should be well above 0.05, and the conclusion should say NON-STATIONARY. This is exactly what we predicted — inflation has a clear upward trend and is not stationary in levels.
+All four variables should show NON-STATIONARY with p-values well above 0.05. This is exactly what we predicted -- the EDA plots from Day 5 showed clear trends in these series.
 
-**What each line of the adf_test function does:**
+**What each piece of the adf_test function does:**
 
-- `adfuller(series.dropna(), autolag="AIC")` — This is the core line. It runs the Augmented Dickey-Fuller test.
+- `adfuller(series.dropna(), autolag="AIC")` -- This is the core line. It runs the Augmented Dickey-Fuller test.
   - `series.dropna()` removes any NaN (missing) values first. The ADF test cannot handle NaN values and will crash if they are present.
-  - `autolag="AIC"` tells the function to automatically choose the best number of lags using the Akaike Information Criterion. The ADF test includes lagged differences of the series to account for serial correlation. Too few lags means the test is invalid; too many lags waste degrees of freedom. AIC finds the optimal balance.
+  - `autolag="AIC"` tells the function to automatically choose the best number of lags using the Akaike Information Criterion. The ADF test includes lagged differences of the series to account for serial correlation. Too few lags means the test is biased; too many lags waste degrees of freedom. AIC finds the optimal balance automatically.
 
-- `result = adfuller(...)` returns a tuple (a fixed-length list) with six elements:
-  - `result[0]` — The test statistic. This is the ADF t-statistic. More negative means stronger evidence of stationarity.
-  - `result[1]` — The p-value. If this is less than 0.05, reject the null (series is stationary).
-  - `result[2]` — The number of lags the test used (chosen automatically by AIC).
-  - `result[3]` — The number of observations used in the test (total rows minus lags).
-  - `result[4]` — A dictionary of critical values at the 1%, 5%, and 10% significance levels.
-  - `result[5]` — The AIC value (we do not use this directly).
+- `result = adfuller(...)` returns a tuple with six elements:
+  - `result[0]` -- The ADF test statistic. More negative means stronger evidence of stationarity.
+  - `result[1]` -- The p-value. Below 0.05 means stationary.
+  - `result[2]` -- The number of lags used (chosen by AIC).
+  - `result[3]` -- The number of observations used (total rows minus lags).
+  - `result[4]` -- A dictionary of critical values at the 1%, 5%, and 10% significance levels.
+  - `result[5]` -- The AIC value (we do not use this directly).
 
-- The test statistic is compared against critical values. If the test statistic is MORE NEGATIVE than the critical value at 5%, we reject the null. For example, if the test statistic is -3.50 and the 5% critical value is -2.87, then -3.50 < -2.87, so we reject. The p-value gives the same information in a more intuitive form: if p < 0.05, reject the null.
+- The `significance=0.05` parameter lets you change the threshold if needed, but 5% is the standard in economics.
 
-- The function returns a dictionary with the key results so we can collect them into a table later.
+- The function returns a dictionary so we can collect all results into a table later.
 
 ---
 
-### Build Step 3: Test All Four Variables in Levels
+### Build Step 3: Add First Difference Testing
 
 Delete everything in `econometric_models/stationarity.py` and replace it with this:
 
 ```python
+"""Stationarity testing for the Nigerian Inflation Predictor."""
 import os
+import sys
 import pandas as pd
+import numpy as np
 from statsmodels.tsa.stattools import adfuller
 
 PROCESSED_DIR = os.path.join(os.path.dirname(__file__), "..", "data", "processed")
@@ -316,50 +322,58 @@ def load_data():
     return df
 
 
-def adf_test(series, name):
-    """
-    Run the Augmented Dickey-Fuller test on a series.
-
-    Null hypothesis: the series has a unit root (non-stationary).
-    If p-value < 0.05, we reject the null and conclude the series IS stationary.
-    """
+def adf_test(series, variable_name, significance=0.05):
     result = adfuller(series.dropna(), autolag="AIC")
-
-    test_stat = result[0]
+    adf_stat = result[0]
     p_value = result[1]
     lags_used = result[2]
     n_obs = result[3]
     critical_values = result[4]
 
-    print(f"\n{'='*50}")
-    print(f"ADF Test: {name}")
-    print(f"{'='*50}")
-    print(f"Test Statistic:  {test_stat:.4f}")
-    print(f"P-Value:         {p_value:.4f}")
-    print(f"Lags Used:       {lags_used}")
-    print(f"Observations:    {n_obs}")
-    for level, cv in critical_values.items():
-        print(f"Critical Value ({level}): {cv:.4f}")
+    is_stationary = p_value < significance
 
-    if p_value < 0.05:
-        print(f"Conclusion: STATIONARY (reject H0 at 5%)")
-    else:
-        print(f"Conclusion: NON-STATIONARY (fail to reject H0)")
+    print(f"\nADF Test for: {variable_name}")
+    print(f"  ADF Statistic : {adf_stat:.4f}")
+    print(f"  p-value       : {p_value:.4f}")
+    print(f"  Lags Used     : {lags_used}")
+    print(f"  Observations  : {n_obs}")
+    print(f"  Critical Values:")
+    for key, val in critical_values.items():
+        print(f"    {key}: {val:.4f}")
+    print(f"  Result: {'STATIONARY' if is_stationary else 'NON-STATIONARY (has unit root)'}")
 
-    return {"test_statistic": test_stat, "p_value": p_value,
-            "lags_used": lags_used, "stationary": p_value < 0.05}
+    return {
+        "variable": variable_name,
+        "adf_statistic": adf_stat,
+        "p_value": p_value,
+        "lags_used": lags_used,
+        "is_stationary": is_stationary,
+    }
 
 
 if __name__ == "__main__":
     df = load_data()
+    print(f"Data loaded: {df.shape[0]} observations, {df.shape[1]} variables")
+    print(f"Period: {df.index[0].strftime('%Y-%m')} to {df.index[-1].strftime('%Y-%m')}")
 
-    print("=" * 60)
-    print("STATIONARITY TESTING — ADF TEST (LEVELS)")
+    print("\n" + "=" * 60)
+    print("ADF TESTS -- LEVELS (original data)")
     print("=" * 60)
 
-    variables = ["mpr", "inflation", "exchange_rate", "m2"]
-    for var in variables:
-        adf_test(df[var], f"{var} (Level)")
+    results_levels = []
+    for col in df.columns:
+        result = adf_test(df[col], col)
+        results_levels.append(result)
+
+    print("\n" + "=" * 60)
+    print("ADF TESTS -- FIRST DIFFERENCES (delta)")
+    print("=" * 60)
+
+    df_diff = df.diff().dropna()
+    results_diff = []
+    for col in df_diff.columns:
+        result = adf_test(df_diff[col], f"d_{col}")
+        results_diff.append(result)
 ```
 
 **Run it:**
@@ -368,53 +382,68 @@ if __name__ == "__main__":
 python -m econometric_models.stationarity
 ```
 
-**What you should see:** Four ADF test outputs, one for each variable. All four should show `NON-STATIONARY (fail to reject H0)` with p-values above 0.05.
+**What you should see:** First, the four level tests (all NON-STATIONARY), then four first difference tests (all STATIONARY):
 
 ```
 ============================================================
-STATIONARITY TESTING — ADF TEST (LEVELS)
+ADF TESTS -- FIRST DIFFERENCES (delta)
 ============================================================
 
-==================================================
-ADF Test: mpr (Level)
-==================================================
-Test Statistic:  -X.XXXX
-P-Value:         0.XXXX
-...
-Conclusion: NON-STATIONARY (fail to reject H0)
+ADF Test for: d_mpr
+  ADF Statistic : -X.XXXX
+  p-value       : 0.0000
+  ...
+  Result: STATIONARY
 
-==================================================
-ADF Test: inflation (Level)
-==================================================
-...
-Conclusion: NON-STATIONARY (fail to reject H0)
+ADF Test for: d_infl
+  ADF Statistic : -X.XXXX
+  p-value       : 0.00XX
+  ...
+  Result: STATIONARY
 
-==================================================
-ADF Test: exchange_rate (Level)
-==================================================
-...
-Conclusion: NON-STATIONARY (fail to reject H0)
+ADF Test for: d_exo
+  ADF Statistic : -X.XXXX
+  p-value       : 0.0000
+  ...
+  Result: STATIONARY
 
-==================================================
-ADF Test: m2 (Level)
-==================================================
-...
-Conclusion: NON-STATIONARY (fail to reject H0)
+ADF Test for: d_tbr
+  ADF Statistic : -X.XXXX
+  p-value       : 0.0000
+  ...
+  Result: STATIONARY
 ```
 
-All four variables are non-stationary in levels. This is exactly what we expected from the time series plots on Day 5 — all four have clear trends. But we need to formally test this rather than just eyeball it, because examiners want statistical evidence, not visual impressions.
+All four first differences should show STATIONARY with p-values well below 0.05.
 
-Now we need to test whether the first differences are stationary.
+**What just happened:**
+
+- `df.diff()` computes the first difference of every column. For each row, it calculates `value_this_month - value_last_month`. The first row becomes NaN because there is no previous month to subtract from.
+- `.dropna()` removes that first NaN row. Without this, the ADF test would crash on the missing value.
+- We prefix the variable names with `d_` (short for "delta" or "difference") so the output clearly shows these are differenced series, not levels. In your thesis, you would write this as the Greek letter delta: `infl` for the level and `d_infl` (or the symbol delta-infl) for the first difference.
+
+**What this means:**
+
+If a variable is non-stationary in levels but stationary in first differences, it is **I(1)** -- integrated of order one. The "1" means you need to difference it once to make it stationary.
+
+If a variable were already stationary in levels, it would be **I(0)** -- integrated of order zero. No differencing needed.
+
+If the first difference were still non-stationary (very rare), you would take the second difference and test again. If that were stationary, the series would be I(2). In practice, almost all Nigerian macroeconomic variables are either I(0) or I(1). I(2) is extremely uncommon.
+
+For the ARDL bounds testing approach that we will use later, we need all variables to be either I(0) or I(1). The ARDL model **cannot handle I(2) variables**. So this test is not just academic -- it determines whether your chosen modelling framework is valid.
 
 ---
 
-### Build Step 4: Add First Difference Testing and Save Results (Final Version)
+### Build Step 4: Add Summary Table and Save to CSV (Final Version)
 
 Delete everything in `econometric_models/stationarity.py` and replace it with this:
 
 ```python
+"""Stationarity testing for the Nigerian Inflation Predictor."""
 import os
+import sys
 import pandas as pd
+import numpy as np
 from statsmodels.tsa.stattools import adfuller
 
 PROCESSED_DIR = os.path.join(os.path.dirname(__file__), "..", "data", "processed")
@@ -427,77 +456,82 @@ def load_data():
     return df
 
 
-def adf_test(series, name):
-    """
-    Run the Augmented Dickey-Fuller test on a series.
-
-    Null hypothesis: the series has a unit root (non-stationary).
-    If p-value < 0.05, we reject the null and conclude the series IS stationary.
-    """
+def adf_test(series, variable_name, significance=0.05):
     result = adfuller(series.dropna(), autolag="AIC")
-
-    test_stat = result[0]
+    adf_stat = result[0]
     p_value = result[1]
     lags_used = result[2]
     n_obs = result[3]
     critical_values = result[4]
 
-    print(f"\n{'='*50}")
-    print(f"ADF Test: {name}")
-    print(f"{'='*50}")
-    print(f"Test Statistic:  {test_stat:.4f}")
-    print(f"P-Value:         {p_value:.4f}")
-    print(f"Lags Used:       {lags_used}")
-    print(f"Observations:    {n_obs}")
-    for level, cv in critical_values.items():
-        print(f"Critical Value ({level}): {cv:.4f}")
+    is_stationary = p_value < significance
 
-    if p_value < 0.05:
-        print(f"Conclusion: STATIONARY (reject H0 at 5%)")
-    else:
-        print(f"Conclusion: NON-STATIONARY (fail to reject H0)")
+    print(f"\nADF Test for: {variable_name}")
+    print(f"  ADF Statistic : {adf_stat:.4f}")
+    print(f"  p-value       : {p_value:.4f}")
+    print(f"  Lags Used     : {lags_used}")
+    print(f"  Observations  : {n_obs}")
+    print(f"  Critical Values:")
+    for key, val in critical_values.items():
+        print(f"    {key}: {val:.4f}")
+    print(f"  Result: {'STATIONARY' if is_stationary else 'NON-STATIONARY (has unit root)'}")
 
-    return {"test_statistic": test_stat, "p_value": p_value,
-            "lags_used": lags_used, "stationary": p_value < 0.05}
+    return {
+        "variable": variable_name,
+        "adf_statistic": adf_stat,
+        "p_value": p_value,
+        "lags_used": lags_used,
+        "is_stationary": is_stationary,
+    }
 
 
 if __name__ == "__main__":
     df = load_data()
-    variables = ["mpr", "inflation", "exchange_rate", "m2"]
-    results = []
+    print(f"Data loaded: {df.shape[0]} observations, {df.shape[1]} variables")
+    print(f"Period: {df.index[0].strftime('%Y-%m')} to {df.index[-1].strftime('%Y-%m')}")
 
-    # Test in levels
+    print("\n" + "=" * 60)
+    print("ADF TESTS -- LEVELS (original data)")
     print("=" * 60)
-    print("STATIONARITY TESTING — ADF TEST")
+
+    results_levels = []
+    for col in df.columns:
+        result = adf_test(df[col], col)
+        results_levels.append(result)
+
+    print("\n" + "=" * 60)
+    print("ADF TESTS -- FIRST DIFFERENCES (delta)")
     print("=" * 60)
 
-    print("\n>>> TESTING IN LEVELS (original data)")
-    for var in variables:
-        r = adf_test(df[var], f"{var} (Level)")
-        results.append({"variable": var, "form": "Level",
-                        "test_stat": r["test_statistic"],
-                        "p_value": r["p_value"], "stationary": r["stationary"]})
-
-    # Test in first differences
-    print("\n\n>>> TESTING IN FIRST DIFFERENCES (change from previous month)")
-    for var in variables:
-        diff_series = df[var].diff().dropna()
-        r = adf_test(diff_series, f"{var} (First Difference)")
-        results.append({"variable": var, "form": "First Difference",
-                        "test_stat": r["test_statistic"],
-                        "p_value": r["p_value"], "stationary": r["stationary"]})
+    df_diff = df.diff().dropna()
+    results_diff = []
+    for col in df_diff.columns:
+        result = adf_test(df_diff[col], f"d_{col}")
+        results_diff.append(result)
 
     # Summary table
-    results_df = pd.DataFrame(results)
-    print("\n\n" + "=" * 60)
-    print("SUMMARY TABLE")
+    print("\n" + "=" * 60)
+    print("SUMMARY")
     print("=" * 60)
-    print(results_df.to_string(index=False))
 
-    # Save results
+    summary = []
+    for lev, dif in zip(results_levels, results_diff):
+        order = "I(0)" if lev["is_stationary"] else ("I(1)" if dif["is_stationary"] else "I(2)+")
+        summary.append({
+            "variable": lev["variable"],
+            "level_pvalue": lev["p_value"],
+            "level_stationary": lev["is_stationary"],
+            "diff_pvalue": dif["p_value"],
+            "diff_stationary": dif["is_stationary"],
+            "integration_order": order,
+        })
+
+    summary_df = pd.DataFrame(summary)
+    print(summary_df.to_string(index=False))
+
     os.makedirs(RESULTS_DIR, exist_ok=True)
-    results_df.to_csv(os.path.join(RESULTS_DIR, "adf_test_results.csv"), index=False)
-    print(f"\nSaved to results/adf_test_results.csv")
+    summary_df.to_csv(os.path.join(RESULTS_DIR, "adf_results.csv"), index=False)
+    print(f"\nResults saved to results/adf_results.csv")
 ```
 
 Build Step 4 above is your final complete file.
@@ -508,157 +542,103 @@ Build Step 4 above is your final complete file.
 python -m econometric_models.stationarity
 ```
 
-**What you should see:** First, the levels tests (all NON-STATIONARY), then the first difference tests (all STATIONARY), then the summary table:
+**What you should see:** All the previous output, plus a summary table at the end:
 
 ```
 ============================================================
-STATIONARITY TESTING — ADF TEST
+SUMMARY
 ============================================================
+variable  level_pvalue  level_stationary  diff_pvalue  diff_stationary integration_order
+     mpr        0.XXXX             False       0.XXXX             True              I(1)
+    infl        0.XXXX             False       0.XXXX             True              I(1)
+     exo        0.XXXX             False       0.XXXX             True              I(1)
+     tbr        0.XXXX             False       0.XXXX             True              I(1)
 
->>> TESTING IN LEVELS (original data)
-
-==================================================
-ADF Test: mpr (Level)
-==================================================
-...
-Conclusion: NON-STATIONARY (fail to reject H0)
-
-==================================================
-ADF Test: inflation (Level)
-==================================================
-...
-Conclusion: NON-STATIONARY (fail to reject H0)
-
-==================================================
-ADF Test: exchange_rate (Level)
-==================================================
-...
-Conclusion: NON-STATIONARY (fail to reject H0)
-
-==================================================
-ADF Test: m2 (Level)
-==================================================
-...
-Conclusion: NON-STATIONARY (fail to reject H0)
-
-
->>> TESTING IN FIRST DIFFERENCES (change from previous month)
-
-==================================================
-ADF Test: mpr (First Difference)
-==================================================
-...
-Conclusion: STATIONARY (reject H0 at 5%)
-
-==================================================
-ADF Test: inflation (First Difference)
-==================================================
-...
-Conclusion: STATIONARY (reject H0 at 5%)
-
-==================================================
-ADF Test: exchange_rate (First Difference)
-==================================================
-...
-Conclusion: STATIONARY (reject H0 at 5%)
-
-==================================================
-ADF Test: m2 (First Difference)
-==================================================
-...
-Conclusion: STATIONARY (reject H0 at 5%)
-
-
-============================================================
-SUMMARY TABLE
-============================================================
-      variable             form  test_stat  p_value  stationary
-           mpr            Level     -X.XXX    0.XXX       False
-     inflation            Level     -X.XXX    0.XXX       False
- exchange_rate            Level     -X.XXX    0.XXX       False
-            m2            Level     -X.XXX    0.XXX       False
-           mpr  First Difference    -X.XXX    0.XXX        True
-     inflation  First Difference    -X.XXX    0.XXX        True
- exchange_rate  First Difference    -X.XXX    0.XXX        True
-            m2  First Difference    -X.XXX    0.XXX        True
-
-Saved to results/adf_test_results.csv
+Results saved to results/adf_results.csv
 ```
 
-(The `X.XXX` values will be actual numbers when you run it.)
+(The `X.XXXX` values will be actual numbers when you run it.)
 
 **What changed from the previous version:**
 
-- We now test both **levels** and **first differences** for every variable.
-- `df[var].diff().dropna()` computes the first difference. `.diff()` calculates `y_t - y_{t-1}` for every row. The first row becomes NaN (because there is no previous month to subtract), so `.dropna()` removes it.
-- Results are collected into a list of dictionaries, then converted to a DataFrame with `pd.DataFrame(results)`. This gives us a clean summary table.
-- `results_df.to_string(index=False)` prints the table without the row index numbers (we do not need them).
-- `os.makedirs(RESULTS_DIR, exist_ok=True)` creates the `results/` folder if it does not already exist. `exist_ok=True` means it will not crash if the folder is already there.
-- The results are saved to `results/adf_test_results.csv` so you can reference them later or paste them into your thesis.
+- The `zip(results_levels, results_diff)` pairs up each variable's level result with its difference result. `zip` takes two lists and walks through them together: the first item from each list, then the second from each, and so on.
+
+- The integration order logic is straightforward:
+  - If the level is stationary, the variable is I(0). No differencing needed.
+  - If the level is non-stationary but the first difference is stationary, the variable is I(1). Difference once.
+  - If both are non-stationary, it is I(2) or higher. This would be a problem for ARDL.
+
+- `pd.DataFrame(summary)` converts the list of dictionaries into a clean table. Each dictionary becomes one row.
+
+- `summary_df.to_string(index=False)` prints the table without row numbers. We do not need them -- the variable name identifies each row.
+
+- `os.makedirs(RESULTS_DIR, exist_ok=True)` creates the `results/` folder if it does not exist. `exist_ok=True` means it will not crash if the folder is already there.
+
+- The CSV file `results/adf_results.csv` is a permanent record of your stationarity tests. You can paste it directly into your thesis appendix.
 
 ---
 
-## Interpreting the Results — Nigeria Specific
+## Interpreting the Results -- Nigeria Specific
 
 You now have formal statistical evidence about the stationarity of each variable. Here is what the results mean and what you should say about them.
 
-### Inflation
+### mpr (Monetary Policy Rate)
 
-**In levels: NON-STATIONARY.** The ADF test confirms what the time series plot showed on Day 5. Inflation has a strong upward trend since 2020, rising from about 12% to over 34%. The mean is not constant — it is much higher in the second half of the sample than the first. The test statistic is not negative enough to reject the null of a unit root.
+**In levels: NON-STATIONARY.** The MPR might seem like it should be stationary because it stays at the same level for months at a time -- the MPC meets every two months and usually holds the rate steady. But the recent aggressive tightening cycle (from 11.5% in 2020 to 27.5% in late 2024) creates a strong upward trend in the latter portion of the sample, making the overall series non-stationary. The ADF test picks up this trend.
 
-**In first differences: STATIONARY.** The first difference of inflation is the month-to-month *change* in the inflation rate. While the inflation rate itself trends upward, the monthly changes fluctuate around a roughly constant mean (close to zero, with occasional spikes). The ADF test strongly rejects the null in first differences.
+**In first differences: STATIONARY.** The month-to-month change in the MPR is mostly zero (because the rate is held constant between MPC meetings), with occasional non-zero values when the rate is changed. This differenced series has no persistent trend and reverts to a mean near zero.
 
-**Conclusion: Inflation is I(1).** Integrated of order one. It needs to be differenced once to become stationary.
+**Conclusion: mpr is I(1).**
 
-### Exchange Rate
+### infl (Headline Inflation Rate)
 
-**In levels: NON-STATIONARY.** The exchange rate has the most dramatic non-stationarity of any variable in the dataset. It went from 92 NGN/USD in 2000 to over 1,680 NGN/USD in 2024, with massive structural breaks in 2016 and 2023. The p-value is almost certainly very high (well above 0.05).
+**In levels: NON-STATIONARY.** The ADF test confirms what the time series plot showed on Day 5. Inflation has a strong upward trend since 2020, climbing from around 12% to above 33%. The mean inflation rate in the second half of the sample is much higher than in the first half. The test statistic is not negative enough to reject the null of a unit root.
 
-**In first differences: STATIONARY.** The month-to-month change in the exchange rate does not have a persistent trend. Even though there are occasional large jumps (June 2016, June 2023), the differenced series reverts to a mean near zero between those jumps. The ADF test rejects the null.
+**In first differences: STATIONARY.** The first difference of inflation -- the month-to-month *change* in the rate -- fluctuates around a roughly constant mean close to zero. While there are occasional spikes (like when inflation jumped sharply after the June 2023 exchange rate unification), the differenced series does not drift upward or downward over time.
 
-**Conclusion: The exchange rate is I(1).** Note that the structural breaks in the exchange rate may cause the ADF test to have low power (it may fail to reject the null even when the series is actually stationary around a broken trend). This is a known limitation, but for our purposes, the I(1) result is consistent with economic theory and our visual analysis.
+**Conclusion: infl is I(1).**
 
-### M2 (Money Supply)
+### exo (Official Exchange Rate)
 
-**In levels: NON-STATIONARY.** M2 shows exponential growth. It grew from about 1 trillion Naira in 2000 to about 285 trillion in 2024. The mean, variance, and every other statistical property change dramatically over the sample period. This is as non-stationary as a series can get.
+**In levels: NON-STATIONARY.** The exchange rate has the most dramatic non-stationarity of any variable in the dataset. It went from about 92 naira per dollar in 2000 to over 1,500 in 2024, with massive structural breaks in June 2016 (when the CBN allowed the naira to float) and June 2023 (exchange rate unification under Tinubu). The p-value is almost certainly very high.
 
-**In first differences: STATIONARY.** The month-to-month change in M2 (how much the money supply grew in a given month) fluctuates around a mean without a persistent trend. The ADF test strongly rejects the null.
+**In first differences: STATIONARY.** The month-to-month change in the exchange rate does not have a persistent trend. Even though there are occasional massive jumps (June 2016, June 2023, early 2024), between those jumps the differenced series reverts to a mean near zero.
 
-**Conclusion: M2 is I(1).** In practice, many researchers take the log of M2 before differencing, because the log transform converts exponential growth into linear growth. The first difference of log(M2) is approximately the monthly percentage growth rate of money supply. We may revisit this transformation later, but for now, the key finding is that M2 is non-stationary in levels and stationary in first differences.
+**Conclusion: exo is I(1).** Note: the structural breaks may reduce the ADF test's power (its ability to correctly reject the null when the series is actually stationary around a broken trend). This is a known limitation, but the I(1) classification is consistent with both economic theory and visual inspection.
 
-### MPR (Monetary Policy Rate)
+### tbr (Treasury Bill Rate)
 
-**In levels: NON-STATIONARY.** The MPR might seem like it should be stationary because it stays at the same level for months at a time. But the recent aggressive tightening cycle (from 11.5% to 27.5% in under two years) creates an upward trend in the second half of the sample, making the overall series non-stationary.
+**In levels: NON-STATIONARY.** The Treasury Bill Rate tracks the MPR closely but with more month-to-month variation because it is determined by market auctions rather than committee decisions. Like the MPR, the TBR shows a strong upward trend in 2022-2024 as the CBN tightened monetary policy, making the overall series non-stationary over the full sample period.
 
-**In first differences: STATIONARY.** The month-to-month change in the MPR is mostly zero (because the rate is held constant between MPC meetings), with occasional non-zero values when the rate is changed. This differenced series has no trend and is stationary.
+**In first differences: STATIONARY.** The month-to-month change in the TBR does not exhibit a persistent trend. Rate movements fluctuate around zero without drifting in one direction.
 
-**Conclusion: MPR is I(1).** The MPR is a borderline case — it has characteristics of both stationary and non-stationary behaviour. But the formal ADF test says non-stationary in levels, and that is what we report.
+**Conclusion: tbr is I(1).**
 
-### The Big Picture
+### What "Integration Order" Means and Why It Matters
 
-All four variables are I(1). This is the single most important result so far, because it determines everything about how you build your models:
+All four variables are I(1). This single finding determines the entire direction of your modelling strategy:
 
-1. **You cannot run a simple OLS regression of inflation on MPR, exchange rate, and M2 in levels.** The results would be spurious. The high R-squared and significant coefficients would be artifacts of common trends, not real relationships.
+1. **You cannot run a simple OLS regression in levels.** Regressing infl on mpr, exo, and tbr in their original form would produce spurious results. The high R-squared and significant coefficients would be artifacts of common trends, not genuine relationships.
 
-2. **You can regress the first differences on each other.** If you difference everything, the variables are stationary and standard regression is valid. But differencing throws away the long-run level information — you only capture short-run dynamics.
+2. **You can regress the first differences on each other.** If you difference everything, the variables become stationary and standard regression is valid. But differencing throws away the long-run level information -- you only capture short-run month-to-month dynamics.
 
-3. **You should test for cointegration.** If the I(1) variables share a long-run equilibrium relationship, they are cointegrated, and you can use an Error Correction Model or ARDL bounds test to capture both short-run and long-run dynamics. This is what we do on Day 8-9.
+3. **You should test for cointegration.** If these I(1) variables share a long-run equilibrium relationship, they are cointegrated, and you can use an Error Correction Model or ARDL bounds test to capture both short-run and long-run dynamics. This is what we test on Day 8-9.
 
-4. **The ARDL bounds testing approach is ideal.** The ARDL model can handle a mix of I(0) and I(1) variables (though not I(2)). Since all our variables are I(1), the ARDL approach is valid. We will build this model in Week 3-4.
+4. **The ARDL bounds testing approach is ideal for your data.** The ARDL model can handle a mix of I(0) and I(1) variables, but it cannot handle I(2). Since all our variables are I(1) -- none are I(2) -- the ARDL framework is valid.
 
 ### What to Tell Your Examiner
 
-> "All four variables — the monetary policy rate, headline inflation, the nominal exchange rate, and broad money supply M2 — are integrated of order one, I(1), as determined by the Augmented Dickey-Fuller test. All variables are non-stationary in levels but become stationary after first differencing. The presence of unit roots in all variables motivates the use of the ARDL bounds testing approach, which can handle a mix of I(0) and I(1) variables, and the Johansen cointegration framework, which tests whether these I(1) variables share long-run equilibrium relationships."
+> "All four variables -- the monetary policy rate (mpr), headline inflation (infl), the official exchange rate (exo), and the Treasury Bill rate (tbr) -- are integrated of order one, I(1), as determined by the Augmented Dickey-Fuller test at the 5% significance level. All variables are non-stationary in levels but become stationary after first differencing. The absence of I(2) variables confirms the applicability of the ARDL bounds testing approach. The presence of unit roots in all variables further motivates cointegration testing to determine whether these variables share a long-run equilibrium relationship."
 
 This is a statement you can put directly into your thesis methodology section.
 
 ---
 
-## Step 2: Commit
+## Commit
 
 ```bash
 git add econometric_models/stationarity.py requirements.txt
-git commit -m "Day 6: ADF stationarity test for all variables"
+git commit -m "Day 6: ADF stationarity test for all variables in levels and first differences"
 ```
 
 ---
@@ -667,12 +647,13 @@ git commit -m "Day 6: ADF stationarity test for all variables"
 
 | Problem | Solution |
 |---------|----------|
-| `ModuleNotFoundError: No module named 'statsmodels'` | You forgot to install statsmodels. Run `pip install -r requirements.txt` and try again. Make sure your virtual environment is activated. |
-| `ModuleNotFoundError: No module named 'numpy'` | numpy is a dependency of statsmodels but should install automatically. If it did not, run `pip install numpy==1.26.2` explicitly. |
+| `ModuleNotFoundError: No module named 'statsmodels'` | You forgot to install statsmodels. Run `pip install -r requirements.txt` and try again. Make sure your virtual environment is activated first. |
+| `ModuleNotFoundError: No module named 'numpy'` | numpy is a dependency of statsmodels and should install automatically. If it did not, run `pip install numpy==1.26.2` explicitly. |
 | `FileNotFoundError` when loading `cleaned_data.csv` | You need to run the cleaning script first: `python -m data_processing.clean`. The stationarity script reads from `data/processed/cleaned_data.csv`, which is created by the Day 4 cleaning step. |
-| `KeyError: 'inflation'` or `KeyError: 'mpr'` | Your cleaned CSV does not have the expected column names. Open `data/processed/cleaned_data.csv` and check the header row. The columns must be exactly: `date`, `mpr`, `inflation`, `exchange_rate`, `m2`. |
-| `ValueError: x is constant` or `ValueError: zero-size array` | One of your columns has no variation (all the same value) or is empty after dropping NaN. Check your data with `print(df.describe())` to see if any column has zero standard deviation. This usually means the data was not loaded correctly. |
+| `KeyError: 'infl'` or `KeyError: 'mpr'` | Your cleaned CSV does not have the expected column names. Open `data/processed/cleaned_data.csv` and check the header row. The columns must be exactly: `mpr`, `infl`, `exo`, `tbr` with `date` as the index. |
+| `ValueError: x is constant` or `ValueError: zero-size array` | One of your columns has no variation (all the same value) or is empty after dropping NaN. Check your data with `print(df.describe())` after loading to see if any column has zero standard deviation. This usually means the data was not loaded correctly. |
 | `TypeError: No numeric types to aggregate` | Your columns are being read as strings instead of numbers. Add `print(df.dtypes)` after loading to check. All four variable columns should be `float64`. If they are `object`, go back to Day 4 and fix the cleaning script. |
+| `PermissionError` when saving to results/ | The script cannot write to the folder. On Linux/Mac, try `chmod -R 755 results/`. On Windows, check folder permissions. |
 
 ---
 
@@ -680,17 +661,17 @@ git commit -m "Day 6: ADF stationarity test for all variables"
 
 These are the kinds of questions an examiner will ask about stationarity. Practice answering them out loud before your defense.
 
-### 1. "What is the null hypothesis of the ADF test?"
+### 1. "What is the null hypothesis of the ADF test, and what does your result mean?"
 
-**Answer:** "The null hypothesis of the Augmented Dickey-Fuller test is that the series has a unit root — that is, the series is non-stationary. The alternative hypothesis is that the series is stationary. This means the test is conservative: we need strong evidence (a p-value below 0.05) to conclude that a series IS stationary. If the evidence is ambiguous, the default conclusion is non-stationarity. In our analysis, all four variables failed to reject the null in levels, indicating unit roots, but strongly rejected the null after first differencing, confirming they are I(1)."
+**Answer:** "The null hypothesis of the Augmented Dickey-Fuller test is that the series has a unit root -- that is, the series is non-stationary. The alternative hypothesis is that the series is stationary. This means the test is conservative: we need strong evidence, specifically a p-value below 0.05, to conclude that a series IS stationary. If the evidence is ambiguous, the default conclusion is non-stationarity. In our analysis, all four variables -- mpr, infl, exo, and tbr -- failed to reject the null in levels, indicating the presence of unit roots. However, all four strongly rejected the null after first differencing, confirming they are integrated of order one, I(1). This finding is consistent with the time series plots from our exploratory data analysis, which showed clear upward trends in all four series."
 
-### 2. "What does I(1) mean?"
+### 2. "What does I(1) mean, and why does it matter for your model choice?"
 
-**Answer:** "I(1) means integrated of order one. A variable is I(1) if it is non-stationary in its original form (in levels) but becomes stationary after being differenced once. The 'one' refers to the number of times you need to difference the series to achieve stationarity. An I(0) variable is already stationary in levels and does not need differencing at all. An I(2) variable would require differencing twice, but this is rare in practice. All four of our variables — MPR, inflation, exchange rate, and M2 — are I(1), meaning they contain stochastic trends in levels that are removed by taking first differences."
+**Answer:** "I(1) means integrated of order one. A variable is I(1) if it is non-stationary in its original form but becomes stationary after being differenced once. The '1' refers to the number of times you need to difference the series to achieve stationarity. An I(0) variable is already stationary and needs no differencing. An I(2) variable requires differencing twice, which is rare in practice. The integration order matters because it determines which econometric models are valid. You cannot run ordinary least squares regression on I(1) variables in levels -- the results will be spurious. Instead, you must either difference everything first, losing long-run information, or use models designed for non-stationary data, such as the ARDL bounds testing approach. The ARDL model accommodates both I(0) and I(1) variables but breaks down if any variable is I(2), which is why we test the integration order before selecting our model."
 
-### 3. "Why can't you just run a regression on non-stationary data?"
+### 3. "Why can you not just run a regression on non-stationary data?"
 
-**Answer:** "Because of the spurious regression problem, demonstrated by Granger and Newbold in 1974. When you regress one non-stationary series on another, the standard statistical tests — t-tests, F-tests, R-squared — become unreliable. You will get a high R-squared and significant t-statistics even when the two variables have no genuine relationship. This happens because both series are correlated with time (they both trend), not necessarily with each other. The standard OLS assumptions break down: residuals are not white noise, they are autocorrelated and non-stationary themselves. To avoid this, we must either difference the variables to make them stationary before regression, or use cointegration techniques that are specifically designed for non-stationary data, such as the ARDL bounds test or the Johansen procedure."
+**Answer:** "Because of the spurious regression problem, demonstrated by Granger and Newbold in 1974. When you regress one non-stationary series on another, the standard statistical tests -- t-tests, F-tests, and R-squared -- become unreliable. You will get a high R-squared and statistically significant coefficients even when the two variables have no genuine causal relationship. This happens because both series are correlated with time: they both trend, and that common trend inflates the apparent relationship between them. The regression residuals will be autocorrelated and non-stationary themselves, violating the classical OLS assumptions. To avoid this, we must either difference the variables to make them stationary before running a regression, or use cointegration-based techniques like the ARDL bounds test or the Johansen procedure, which are specifically designed for non-stationary data and can separate genuine long-run relationships from spurious correlations."
 
 ---
 
@@ -699,11 +680,11 @@ These are the kinds of questions an examiner will ask about stationarity. Practi
 | Item | File | Purpose |
 |------|------|---------|
 | Stationarity test script | `econometric_models/stationarity.py` | Runs the ADF test on all 4 variables in levels and first differences |
-| ADF results table | `results/adf_test_results.csv` | Summary of test statistics, p-values, and stationarity conclusions for all 8 tests |
-| Updated dependencies | `requirements.txt` | Added numpy and statsmodels |
+| ADF results table | `results/adf_results.csv` | Summary of test statistics, p-values, and integration orders for all variables |
+| Updated dependencies | `requirements.txt` | Added numpy==1.26.2 and statsmodels==0.14.1 |
 
 **Packages installed today:** `numpy==1.26.2`, `statsmodels==0.14.1`
 
-**Key finding:** All four variables (MPR, inflation, exchange rate, M2) are I(1) — non-stationary in levels, stationary in first differences.
+**Key finding:** All four variables (mpr, infl, exo, tbr) are I(1) -- non-stationary in levels, stationary in first differences. No variable is I(2), confirming the ARDL bounds testing approach is applicable.
 
-**Tomorrow (Day 7):** We run the KPSS test as a confirmatory stationarity test. The KPSS test has the *opposite* null hypothesis from the ADF test (it assumes stationarity under the null), so using both tests together gives you much stronger evidence. If ADF says non-stationary AND KPSS says non-stationary, you can be confident. This is what examiners expect to see.
+**Tomorrow (Day 7):** We run the KPSS test as a confirmatory stationarity test. The KPSS test has the *opposite* null hypothesis from the ADF test -- it assumes stationarity under the null. Using both tests together gives you much stronger evidence. If the ADF says non-stationary AND the KPSS also says non-stationary, you can be confident in your conclusion. Examiners expect to see both tests, not just one. Running only the ADF and claiming your variables are I(1) invites the question "did you confirm with a second test?" Tomorrow you will be able to answer yes.
