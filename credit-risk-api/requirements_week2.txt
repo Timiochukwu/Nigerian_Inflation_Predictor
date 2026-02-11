@@ -1,0 +1,5 @@
+# Week 2: Machine Learning Models
+# Add to previous:
+xgboost==2.0.0
+imbalanced-learn==0.11.0
+shap==0.42.1

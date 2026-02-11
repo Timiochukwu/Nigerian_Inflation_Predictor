@@ -1,0 +1,7 @@
+# Week 4: API Development
+# Add to previous:
+fastapi==0.103.0
+uvicorn==0.23.0
+pydantic==2.3.0
+pytest==7.4.0
+httpx==0.24.1
