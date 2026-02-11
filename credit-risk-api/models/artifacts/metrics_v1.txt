@@ -1,0 +1,10 @@
+MODEL PERFORMANCE METRICS
+============================================================
+
+Train Accuracy: 0.9990
+Train F1 Score: 0.9983
+Train ROC-AUC:  1.0000
+
+Test Accuracy:  0.9790
+Test F1 Score:  0.9647
+Test ROC-AUC:   0.9987
