@@ -1,467 +1,705 @@
-# DAY 2: Data Merging - Complete Walkthrough
+# DAY 2: Data Merging - Kaggle Credit Risk Dataset
 
-**Goal**: Combine loans, customers, and payments into one unified dataset
+**Goal**: Merge demographics + current loans + historical loan behavior into one unified dataset
 
-**Time**: 30 minutes
+**Time**: 45 minutes
+
+**Prerequisites**: Day 1 completed (3 CSV files in data/processed/)
 
 ---
 
 ## 📋 What You'll Build Today
 
 By the end of Day 2, you'll have:
-- ✅ Merged loans + customers data (one row per loan with customer info)
-- ✅ Aggregated payment history (payment patterns per customer)
-- ✅ Final merged dataset with all features
-- ✅ Saved to `data/processed/merged_day2.csv`
+- ✅ Demographics + current loans merged (one row per loan with customer info)
+- ✅ Historical loan behavior aggregated per customer (payment patterns, default history)
+- ✅ Final master dataset with all 3 data sources merged
+- ✅ Saved to `data/processed/master_dataset_day2.csv`
 
 ---
 
-## Prerequisites
+## Prerequisites Check
 
-**Before starting Day 2, make sure you completed Day 1:**
+**Before starting Day 2, verify Day 1 outputs exist:**
 
 ```bash
-# Check that Day 1 files exist
-ls data/processed/loans_day1.csv
-ls data/processed/customers_day1.csv
-ls data/processed/payments_day1.csv
+cd credit-risk-api
+ls -lh data/processed/demographics_day1.csv
+ls -lh data/processed/current_loans_day1.csv
+ls -lh data/processed/historical_loans_day1.csv
 ```
 
-If files are missing, go back and complete Day 1:
+**If missing, complete Day 1 first:**
 ```bash
-python src/day1_load_explore.py
+python src/data/load_kaggle_data.py
 ```
 
 ---
 
 ## PART 1: Understanding the Merge Strategy
 
-**We have 3 datasets:**
+**We have 3 datasets from Day 1:**
 
-1. **loans.csv** (5,000 rows) - One row per loan
-   - `loan_id`, `customer_id`, `loan_amount`, `loan_term`, etc.
+1. **demographics_day1.csv** (8,000 rows) - One row per customer
+   - `customerid`, `birthdate`, `bank_account_type`, `education`, etc.
 
-2. **customers.csv** (5,000 rows) - One row per customer
-   - `customer_id`, `age`, `income`, `credit_score`, etc.
+2. **current_loans_day1.csv** (8,000 rows) - One row per current loan
+   - `customerid`, `loanamount`, `totaldue`, `approveddate`, etc.
 
-3. **payments.csv** (50,000 rows) - 10 rows per customer
-   - `customer_id`, `payment_status`, `days_late`, etc.
+3. **historical_loans_day1.csv** (~25,000 rows) - Multiple rows per customer
+   - `customerid`, `loannumber`, `loanamount`, `closeddate`, `firstduedate`, `firstrepaiddate`, etc.
 
 **Merge Strategy:**
 ```
-Step 1: loans + customers → One row per loan with customer info
-Step 2: Aggregate payments (50,000 rows → 5,000 summary rows)
-Step 3: Merge payment summaries → Final merged dataset
+Step 1: Demographics + Current Loans → 8,000 rows (one row per loan with customer info)
+Step 2: Aggregate Historical Loans → 6,500 rows (one summary per customer with history)
+Step 3: Merge Historical Summary → 8,000 rows (final master dataset)
 ```
 
-**Result**: One row per loan with loan info + customer info + payment history summary
+**Key Insight**: Not all customers have historical data (~1,500 new customers). We'll use a **left join** to keep all current loans.
 
 ---
 
-## PART 2: Build Data Merging Script
+## PART 2: Build the Data Merging Script (4 Chunks)
 
-### Step 1: Create Day 2 Merging Script
+We'll build `src/data/merge_kaggle_data.py` in 4 incremental steps.
 
-Create a new file: `src/day2_merge.py`
+### Step 1: Chunk 1 - Load Day 1 Outputs
 
-Delete everything in `src/day2_merge.py` and replace it with this:
+Create a new file: `src/data/merge_kaggle_data.py`
+
+Add this code:
 
 ```python
 """
-DAY 2: Data Merging
-Combine loans, customers, and payment history into one dataset
+Day 2: Merge Kaggle Credit Risk datasets
 """
-
 import pandas as pd
 import numpy as np
 from pathlib import Path
 
 # ============================================================================
-# Setup Paths
+# PATHS
 # ============================================================================
 
-BASE_DIR = Path(__file__).parent.parent
-DATA_DIR = BASE_DIR / 'data'
-PROCESSED_DIR = DATA_DIR / 'processed'
-
-print("=" * 80)
-print("DAY 2: DATA MERGING")
-print("=" * 80)
-print()
+BASE_DIR = Path(__file__).parent.parent.parent
+PROCESSED_DATA_DIR = BASE_DIR / 'data' / 'processed'
 
 # ============================================================================
-# STEP 1: Load Day 1 Processed Data
+# CHUNK 1: Load Day 1 Outputs
 # ============================================================================
 
-print("📂 STEP 1: Loading Day 1 processed data...")
-print("-" * 80)
+def load_day1_outputs():
+    """Load the 3 datasets from Day 1"""
+    print("=" * 70)
+    print("DAY 2: Merge Kaggle Credit Risk Data")
+    print("=" * 70)
 
-loans_df = pd.read_csv(PROCESSED_DIR / 'loans_day1.csv')
-customers_df = pd.read_csv(PROCESSED_DIR / 'customers_day1.csv')
-payments_df = pd.read_csv(PROCESSED_DIR / 'payments_day1.csv')
+    print("\n📂 Loading Day 1 outputs...")
 
-print(f"✅ Loans:     {loans_df.shape[0]:,} rows × {loans_df.shape[1]} columns")
-print(f"✅ Customers: {customers_df.shape[0]:,} rows × {customers_df.shape[1]} columns")
-print(f"✅ Payments:  {payments_df.shape[0]:,} rows × {payments_df.shape[1]} columns")
-print()
+    demographics = pd.read_csv(PROCESSED_DATA_DIR / 'demographics_day1.csv')
+    print(f"   ✅ Demographics: {len(demographics):,} customers, {demographics.shape[1]} columns")
 
-# ============================================================================
-# STEP 2: Merge Loans with Customers
-# ============================================================================
+    current_loans = pd.read_csv(PROCESSED_DATA_DIR / 'current_loans_day1.csv')
+    print(f"   ✅ Current loans: {len(current_loans):,} loans, {current_loans.shape[1]} columns")
 
-print("🔗 STEP 2: Merging loans with customers...")
-print("-" * 80)
+    historical_loans = pd.read_csv(PROCESSED_DATA_DIR / 'historical_loans_day1.csv')
+    print(f"   ✅ Historical loans: {len(historical_loans):,} records, {historical_loans.shape[1]} columns")
+    print(f"   ✅ Unique customers with history: {historical_loans['customerid'].nunique():,}\n")
 
-print("\n📋 Before merge:")
-print(f"   Loans columns: {list(loans_df.columns)}")
-print(f"   Customers columns: {list(customers_df.columns)}")
+    return demographics, current_loans, historical_loans
 
-# Left join: Keep all loans, add customer info
-merged_df = loans_df.merge(
-    customers_df,
-    on='customer_id',
-    how='left'
-)
+if __name__ == "__main__":
+    demographics, current_loans, historical_loans = load_day1_outputs()
 
-print(f"\n✅ After loans + customers merge: {merged_df.shape}")
-print(f"   Columns: {list(merged_df.columns)}")
+    print("\n" + "=" * 70)
+    print("PREVIEW: Demographics")
+    print("=" * 70)
+    print(demographics.head(3))
 
-# Check for missing values after merge
-missing_after_merge = merged_df.isnull().sum().sum()
-print(f"\n📊 Missing values after merge: {missing_after_merge}")
+    print("\n" + "=" * 70)
+    print("PREVIEW: Current Loans")
+    print("=" * 70)
+    print(current_loans.head(3))
 
-if missing_after_merge > 0:
-    print("⚠️  Some loans have no matching customer!")
-    print(merged_df[merged_df.isnull().any(axis=1)])
-else:
-    print("✅ All loans successfully matched with customers")
-
-print()
-
-# ============================================================================
-# STEP 3: Aggregate Payment History
-# ============================================================================
-
-print("🔗 STEP 3: Aggregating payment history...")
-print("-" * 80)
-
-print("\n📋 Payment data structure:")
-print(payments_df.head(15))  # Show payments for first 2 customers
-
-print("\n🔄 Aggregating 50,000 payment records → 5,000 customer summaries...")
-
-# For each customer, calculate payment behavior metrics
-payment_agg = payments_df.groupby('customer_id').agg({
-    'payment_status': lambda x: (x == 'paid').mean(),  # % of on-time payments
-    'days_late': ['mean', 'max', 'min']  # Average, max, min late days
-}).reset_index()
-
-# Flatten column names
-payment_agg.columns = [
-    'customer_id',
-    'ontime_rate',
-    'avg_days_late',
-    'max_days_late',
-    'min_days_late'
-]
-
-print(f"✅ Payment aggregation complete: {payment_agg.shape}")
-print("\n📊 Payment summary preview:")
-print(payment_agg.head(10))
-
-print("\n📈 Payment behavior statistics:")
-print(payment_agg.describe())
-
-print()
-
-# ============================================================================
-# STEP 4: Merge Payment Summaries
-# ============================================================================
-
-print("🔗 STEP 4: Merging payment summaries with main dataset...")
-print("-" * 80)
-
-print(f"\n📋 Before payment merge: {merged_df.shape}")
-
-# Left join: Add payment summaries to main dataset
-merged_df = merged_df.merge(
-    payment_agg,
-    on='customer_id',
-    how='left'
-)
-
-print(f"✅ After payment merge: {merged_df.shape}")
-print(f"   Total columns: {merged_df.shape[1]}")
-
-# Check for customers with no payment history
-customers_no_payments = merged_df['ontime_rate'].isnull().sum()
-print(f"\n📊 Customers with no payment history: {customers_no_payments}")
-
-if customers_no_payments > 0:
-    print("⚠️  Filling missing payment history with safe defaults...")
-    merged_df['ontime_rate'] = merged_df['ontime_rate'].fillna(1.0)  # Assume good
-    merged_df['avg_days_late'] = merged_df['avg_days_late'].fillna(0)
-    merged_df['max_days_late'] = merged_df['max_days_late'].fillna(0)
-    merged_df['min_days_late'] = merged_df['min_days_late'].fillna(0)
-    print("✅ Missing values filled")
-
-print()
-
-# ============================================================================
-# STEP 5: Verify Final Merged Dataset
-# ============================================================================
-
-print("🔍 STEP 5: Verifying final merged dataset...")
-print("-" * 80)
-
-print("\n📋 Final dataset info:")
-print(f"   Shape: {merged_df.shape}")
-print(f"   Columns: {list(merged_df.columns)}")
-
-print("\n📊 Final dataset preview:")
-print(merged_df.head())
-
-print("\n📈 Final dataset statistics:")
-print(merged_df.describe())
-
-print("\n⚠️  Missing values check:")
-missing_summary = merged_df.isnull().sum()
-print(missing_summary[missing_summary > 0])
-
-if merged_df.isnull().sum().sum() == 0:
-    print("✅ No missing values - dataset is complete!")
-
-print()
-
-# ============================================================================
-# STEP 6: Save Merged Dataset
-# ============================================================================
-
-print("💾 STEP 6: Saving merged dataset...")
-print("-" * 80)
-
-output_file = PROCESSED_DIR / 'merged_day2.csv'
-merged_df.to_csv(output_file, index=False)
-
-print(f"✅ Saved: {output_file}")
-print(f"   Size: {merged_df.shape[0]:,} rows × {merged_df.shape[1]} columns")
-
-# ============================================================================
-# SUMMARY
-# ============================================================================
-
-print("\n" + "=" * 80)
-print("🎉 DAY 2 COMPLETE!")
-print("=" * 80)
-
-print("\n📊 Summary:")
-print(f"   • Started with 3 separate datasets")
-print(f"   • Merged loans + customers → {merged_df.shape}")
-print(f"   • Aggregated {payments_df.shape[0]:,} payment records → {payment_agg.shape[0]:,} summaries")
-print(f"   • Final merged dataset: {merged_df.shape[0]:,} rows × {merged_df.shape[1]} columns")
-print(f"   • Saved to: {output_file}")
-
-print("\n📋 Available features:")
-print("   From loans:", list(loans_df.columns))
-print("   From customers:", list(customers_df.columns))
-print("   From payments:", list(payment_agg.columns))
-
-print("\n✅ Dataset is ready for feature engineering!")
-print("\n✅ Next: Run Day 3 to create predictive features")
-print("   python src/day3_feature_engineering.py")
+    print("\n" + "=" * 70)
+    print("PREVIEW: Historical Loans")
+    print("=" * 70)
+    print(historical_loans.head(3))
 ```
 
----
-
-## PART 3: Run Day 2 Script
-
-### Step 1: Run the merging script
-
+**Run it:**
 ```bash
-python src/day2_merge.py
+python src/data/merge_kaggle_data.py
 ```
 
 **Expected output:**
-
 ```
-================================================================================
-DAY 2: DATA MERGING
-================================================================================
+======================================================================
+DAY 2: Merge Kaggle Credit Risk Data
+======================================================================
 
-📂 STEP 1: Loading Day 1 processed data...
---------------------------------------------------------------------------------
-✅ Loans:     5,000 rows × 7 columns
-✅ Customers: 5,000 rows × 7 columns
-✅ Payments:  50,000 rows × 4 columns
+📂 Loading Day 1 outputs...
+   ✅ Demographics: 8,000 customers, 10 columns
+   ✅ Current loans: 8,000 loans, 15 columns
+   ✅ Historical loans: 25,000 records, 18 columns
+   ✅ Unique customers with history: 6,500
+```
 
-🔗 STEP 2: Merging loans with customers...
---------------------------------------------------------------------------------
+---
 
-📋 Before merge:
-   Loans columns: ['loan_id', 'customer_id', 'loan_amount', 'loan_term', 'interest_rate', 'purpose', 'loan_status']
-   Customers columns: ['customer_id', 'age', 'income', 'employment_years', 'credit_score', 'total_debt', 'total_credit_limit']
+### Step 2: Chunk 2 - Merge Demographics + Current Loans
 
-✅ After loans + customers merge: (5000, 13)
-   Columns: ['loan_id', 'customer_id', 'loan_amount', 'loan_term', 'interest_rate', 'purpose', 'loan_status', 'age', 'income', 'employment_years', 'credit_score', 'total_debt', 'total_credit_limit']
+**Delete everything in `src/data/merge_kaggle_data.py` and replace with this:**
 
-📊 Missing values after merge: 0
-✅ All loans successfully matched with customers
+```python
+"""
+Day 2: Merge Kaggle Credit Risk datasets
+"""
+import pandas as pd
+import numpy as np
+from pathlib import Path
 
-🔗 STEP 3: Aggregating payment history...
---------------------------------------------------------------------------------
+# ============================================================================
+# PATHS
+# ============================================================================
 
-📋 Payment data structure:
-  customer_id  payment_number payment_status  days_late
-0      C00001               1           paid          0
-1      C00001               2           paid          0
-2      C00001               3           late         12
-...
+BASE_DIR = Path(__file__).parent.parent.parent
+PROCESSED_DATA_DIR = BASE_DIR / 'data' / 'processed'
 
-🔄 Aggregating 50,000 payment records → 5,000 customer summaries...
-✅ Payment aggregation complete: (5000, 5)
+# ============================================================================
+# CHUNK 1: Load Day 1 Outputs
+# ============================================================================
 
-📊 Payment summary preview:
-  customer_id  ontime_rate  avg_days_late  max_days_late  min_days_late
-0      C00001         0.90            2.5           12.0              0
-1      C00002         0.30           35.7           78.0              0
-...
+def load_day1_outputs():
+    """Load the 3 datasets from Day 1"""
+    print("=" * 70)
+    print("DAY 2: Merge Kaggle Credit Risk Data")
+    print("=" * 70)
 
-🔗 STEP 4: Merging payment summaries with main dataset...
---------------------------------------------------------------------------------
+    print("\n📂 Loading Day 1 outputs...")
 
-📋 Before payment merge: (5000, 13)
-✅ After payment merge: (5000, 17)
-   Total columns: 17
+    demographics = pd.read_csv(PROCESSED_DATA_DIR / 'demographics_day1.csv')
+    print(f"   ✅ Demographics: {len(demographics):,} customers, {demographics.shape[1]} columns")
 
-📊 Customers with no payment history: 0
+    current_loans = pd.read_csv(PROCESSED_DATA_DIR / 'current_loans_day1.csv')
+    print(f"   ✅ Current loans: {len(current_loans):,} loans, {current_loans.shape[1]} columns")
 
-🔍 STEP 5: Verifying final merged dataset...
---------------------------------------------------------------------------------
+    historical_loans = pd.read_csv(PROCESSED_DATA_DIR / 'historical_loans_day1.csv')
+    print(f"   ✅ Historical loans: {len(historical_loans):,} records, {historical_loans.shape[1]} columns")
+    print(f"   ✅ Unique customers with history: {historical_loans['customerid'].nunique():,}\n")
 
-📋 Final dataset info:
-   Shape: (5000, 17)
-   Columns: ['loan_id', 'customer_id', 'loan_amount', 'loan_term', 'interest_rate',
-             'purpose', 'loan_status', 'age', 'income', 'employment_years', 'credit_score',
-             'total_debt', 'total_credit_limit', 'ontime_rate', 'avg_days_late',
-             'max_days_late', 'min_days_late']
+    return demographics, current_loans, historical_loans
 
-✅ No missing values - dataset is complete!
+# ============================================================================
+# CHUNK 2: Merge Demographics + Current Loans
+# ============================================================================
 
-💾 STEP 6: Saving merged dataset...
---------------------------------------------------------------------------------
-✅ Saved: data/processed/merged_day2.csv
-   Size: 5,000 rows × 17 columns
+def merge_demographics_and_loans(demographics, current_loans):
+    """
+    Merge demographics and current loans on customerid
+    Result: One row per loan with customer demographic information
+    """
+    print("=" * 70)
+    print("STEP 1: Merge Demographics + Current Loans")
+    print("=" * 70)
 
-================================================================================
+    print(f"\n📊 Before merge:")
+    print(f"   Demographics: {len(demographics):,} rows")
+    print(f"   Current loans: {len(current_loans):,} rows")
+
+    # Left join: Keep all current loans, add customer info
+    merged = current_loans.merge(
+        demographics,
+        on='customerid',
+        how='left',
+        validate='many_to_one'  # Many loans can belong to one customer
+    )
+
+    print(f"\n✅ After merge:")
+    print(f"   Merged dataset: {len(merged):,} rows, {merged.shape[1]} columns")
+
+    # Check for missing matches
+    missing_customers = merged['customerid'].isnull().sum()
+    if missing_customers > 0:
+        print(f"   ⚠️  WARNING: {missing_customers:,} loans have no customer info")
+    else:
+        print(f"   ✅ All loans have customer info")
+
+    return merged
+
+if __name__ == "__main__":
+    demographics, current_loans, historical_loans = load_day1_outputs()
+
+    # Merge demographics + current loans
+    merged = merge_demographics_and_loans(demographics, current_loans)
+
+    print("\n" + "=" * 70)
+    print("MERGED PREVIEW (Demographics + Current Loans)")
+    print("=" * 70)
+    print(merged.head(3))
+    print("\nColumns:", merged.columns.tolist())
+```
+
+**Run it:**
+```bash
+python src/data/merge_kaggle_data.py
+```
+
+**Expected output:**
+```
+======================================================================
+STEP 1: Merge Demographics + Current Loans
+======================================================================
+
+📊 Before merge:
+   Demographics: 8,000 rows
+   Current loans: 8,000 rows
+
+✅ After merge:
+   Merged dataset: 8,000 rows, 24 columns
+   ✅ All loans have customer info
+```
+
+---
+
+### Step 3: Chunk 3 - Aggregate Historical Loans Per Customer
+
+**Delete everything in `src/data/merge_kaggle_data.py` and replace with this:**
+
+```python
+"""
+Day 2: Merge Kaggle Credit Risk datasets
+"""
+import pandas as pd
+import numpy as np
+from pathlib import Path
+
+# ============================================================================
+# PATHS
+# ============================================================================
+
+BASE_DIR = Path(__file__).parent.parent.parent
+PROCESSED_DATA_DIR = BASE_DIR / 'data' / 'processed'
+
+# ============================================================================
+# CHUNK 1: Load Day 1 Outputs
+# ============================================================================
+
+def load_day1_outputs():
+    """Load the 3 datasets from Day 1"""
+    print("=" * 70)
+    print("DAY 2: Merge Kaggle Credit Risk Data")
+    print("=" * 70)
+
+    print("\n📂 Loading Day 1 outputs...")
+
+    demographics = pd.read_csv(PROCESSED_DATA_DIR / 'demographics_day1.csv')
+    print(f"   ✅ Demographics: {len(demographics):,} customers, {demographics.shape[1]} columns")
+
+    current_loans = pd.read_csv(PROCESSED_DATA_DIR / 'current_loans_day1.csv')
+    print(f"   ✅ Current loans: {len(current_loans):,} loans, {current_loans.shape[1]} columns")
+
+    historical_loans = pd.read_csv(PROCESSED_DATA_DIR / 'historical_loans_day1.csv')
+    print(f"   ✅ Historical loans: {len(historical_loans):,} records, {historical_loans.shape[1]} columns")
+    print(f"   ✅ Unique customers with history: {historical_loans['customerid'].nunique():,}\n")
+
+    return demographics, current_loans, historical_loans
+
+# ============================================================================
+# CHUNK 2: Merge Demographics + Current Loans
+# ============================================================================
+
+def merge_demographics_and_loans(demographics, current_loans):
+    """
+    Merge demographics and current loans on customerid
+    Result: One row per loan with customer demographic information
+    """
+    print("=" * 70)
+    print("STEP 1: Merge Demographics + Current Loans")
+    print("=" * 70)
+
+    print(f"\n📊 Before merge:")
+    print(f"   Demographics: {len(demographics):,} rows")
+    print(f"   Current loans: {len(current_loans):,} rows")
+
+    # Left join: Keep all current loans, add customer info
+    merged = current_loans.merge(
+        demographics,
+        on='customerid',
+        how='left',
+        validate='many_to_one'
+    )
+
+    print(f"\n✅ After merge:")
+    print(f"   Merged dataset: {len(merged):,} rows, {merged.shape[1]} columns")
+
+    # Check for missing matches
+    missing_customers = merged['customerid'].isnull().sum()
+    if missing_customers > 0:
+        print(f"   ⚠️  WARNING: {missing_customers:,} loans have no customer info")
+    else:
+        print(f"   ✅ All loans have customer info")
+
+    return merged
+
+# ============================================================================
+# CHUNK 3: Aggregate Historical Loans Per Customer
+# ============================================================================
+
+def aggregate_historical_loans(historical_loans):
+    """
+    Aggregate historical loan behavior per customer
+    From 25,000 rows → 6,500 rows (one row per customer with history)
+
+    Features created:
+    - hist_total_loans: Total number of historical loans
+    - hist_avg_loan_amount: Average historical loan amount
+    - hist_total_loan_amount: Total amount borrowed historically
+    - hist_closed_loans: Number of closed loans
+    - hist_open_loans: Number of still-open loans
+    """
+    print("\n" + "=" * 70)
+    print("STEP 2: Aggregate Historical Loans Per Customer")
+    print("=" * 70)
+
+    print(f"\n📊 Before aggregation:")
+    print(f"   Historical loans: {len(historical_loans):,} rows")
+    print(f"   Unique customers: {historical_loans['customerid'].nunique():,}")
+
+    # Convert dates if needed
+    date_cols = ['approveddate', 'creationdate', 'closeddate', 'firstduedate', 'firstrepaiddate']
+    for col in date_cols:
+        if col in historical_loans.columns:
+            historical_loans[col] = pd.to_datetime(historical_loans[col], errors='coerce')
+
+    # Aggregate per customer
+    agg_dict = {
+        'loannumber': 'count',  # Total loans
+        'loanamount': ['mean', 'sum', 'max', 'min'],  # Loan amount stats
+    }
+
+    # Check if closeddate exists (indicates closed loans)
+    if 'closeddate' in historical_loans.columns:
+        historical_loans['is_closed'] = historical_loans['closeddate'].notnull().astype(int)
+        agg_dict['is_closed'] = 'sum'  # Count closed loans
+
+    hist_agg = historical_loans.groupby('customerid').agg(agg_dict).reset_index()
+
+    # Flatten column names
+    hist_agg.columns = ['customerid', 'hist_total_loans', 'hist_avg_loan_amount',
+                        'hist_total_loan_amount', 'hist_max_loan_amount', 'hist_min_loan_amount',
+                        'hist_closed_loans']
+
+    # Calculate open loans
+    hist_agg['hist_open_loans'] = hist_agg['hist_total_loans'] - hist_agg['hist_closed_loans']
+
+    # Add flag for having history
+    hist_agg['has_history'] = 1
+
+    print(f"\n✅ After aggregation:")
+    print(f"   Aggregated dataset: {len(hist_agg):,} rows (one per customer), {hist_agg.shape[1]} features")
+    print(f"\n   Features created:")
+    for col in hist_agg.columns:
+        if col != 'customerid':
+            print(f"      • {col}")
+
+    return hist_agg
+
+if __name__ == "__main__":
+    demographics, current_loans, historical_loans = load_day1_outputs()
+
+    # Merge demographics + current loans
+    merged = merge_demographics_and_loans(demographics, current_loans)
+
+    # Aggregate historical loans
+    hist_agg = aggregate_historical_loans(historical_loans)
+
+    print("\n" + "=" * 70)
+    print("AGGREGATED HISTORICAL LOANS PREVIEW")
+    print("=" * 70)
+    print(hist_agg.head(3))
+```
+
+**Run it:**
+```bash
+python src/data/merge_kaggle_data.py
+```
+
+**Expected output:**
+```
+======================================================================
+STEP 2: Aggregate Historical Loans Per Customer
+======================================================================
+
+📊 Before aggregation:
+   Historical loans: 25,000 rows
+   Unique customers: 6,500
+
+✅ After aggregation:
+   Aggregated dataset: 6,500 rows (one per customer), 9 features
+
+   Features created:
+      • hist_total_loans
+      • hist_avg_loan_amount
+      • hist_total_loan_amount
+      • hist_max_loan_amount
+      • hist_min_loan_amount
+      • hist_closed_loans
+      • hist_open_loans
+      • has_history
+```
+
+---
+
+### Step 4: Chunk 4 - Final Merge + Save
+
+**Delete everything in `src/data/merge_kaggle_data.py` and replace with this:**
+
+```python
+"""
+Day 2: Merge Kaggle Credit Risk datasets
+"""
+import pandas as pd
+import numpy as np
+from pathlib import Path
+
+# ============================================================================
+# PATHS
+# ============================================================================
+
+BASE_DIR = Path(__file__).parent.parent.parent
+PROCESSED_DATA_DIR = BASE_DIR / 'data' / 'processed'
+
+# ============================================================================
+# CHUNK 1: Load Day 1 Outputs
+# ============================================================================
+
+def load_day1_outputs():
+    """Load the 3 datasets from Day 1"""
+    print("=" * 70)
+    print("DAY 2: Merge Kaggle Credit Risk Data")
+    print("=" * 70)
+
+    print("\n📂 Loading Day 1 outputs...")
+
+    demographics = pd.read_csv(PROCESSED_DATA_DIR / 'demographics_day1.csv')
+    print(f"   ✅ Demographics: {len(demographics):,} customers, {demographics.shape[1]} columns")
+
+    current_loans = pd.read_csv(PROCESSED_DATA_DIR / 'current_loans_day1.csv')
+    print(f"   ✅ Current loans: {len(current_loans):,} loans, {current_loans.shape[1]} columns")
+
+    historical_loans = pd.read_csv(PROCESSED_DATA_DIR / 'historical_loans_day1.csv')
+    print(f"   ✅ Historical loans: {len(historical_loans):,} records, {historical_loans.shape[1]} columns")
+    print(f"   ✅ Unique customers with history: {historical_loans['customerid'].nunique():,}\n")
+
+    return demographics, current_loans, historical_loans
+
+# ============================================================================
+# CHUNK 2: Merge Demographics + Current Loans
+# ============================================================================
+
+def merge_demographics_and_loans(demographics, current_loans):
+    """
+    Merge demographics and current loans on customerid
+    Result: One row per loan with customer demographic information
+    """
+    print("=" * 70)
+    print("STEP 1: Merge Demographics + Current Loans")
+    print("=" * 70)
+
+    print(f"\n📊 Before merge:")
+    print(f"   Demographics: {len(demographics):,} rows")
+    print(f"   Current loans: {len(current_loans):,} rows")
+
+    # Left join: Keep all current loans, add customer info
+    merged = current_loans.merge(
+        demographics,
+        on='customerid',
+        how='left',
+        validate='many_to_one'
+    )
+
+    print(f"\n✅ After merge:")
+    print(f"   Merged dataset: {len(merged):,} rows, {merged.shape[1]} columns")
+
+    # Check for missing matches
+    missing_customers = merged['customerid'].isnull().sum()
+    if missing_customers > 0:
+        print(f"   ⚠️  WARNING: {missing_customers:,} loans have no customer info")
+    else:
+        print(f"   ✅ All loans have customer info")
+
+    return merged
+
+# ============================================================================
+# CHUNK 3: Aggregate Historical Loans Per Customer
+# ============================================================================
+
+def aggregate_historical_loans(historical_loans):
+    """
+    Aggregate historical loan behavior per customer
+    From 25,000 rows → 6,500 rows (one row per customer with history)
+    """
+    print("\n" + "=" * 70)
+    print("STEP 2: Aggregate Historical Loans Per Customer")
+    print("=" * 70)
+
+    print(f"\n📊 Before aggregation:")
+    print(f"   Historical loans: {len(historical_loans):,} rows")
+    print(f"   Unique customers: {historical_loans['customerid'].nunique():,}")
+
+    # Convert dates if needed
+    date_cols = ['approveddate', 'creationdate', 'closeddate', 'firstduedate', 'firstrepaiddate']
+    for col in date_cols:
+        if col in historical_loans.columns:
+            historical_loans[col] = pd.to_datetime(historical_loans[col], errors='coerce')
+
+    # Aggregate per customer
+    agg_dict = {
+        'loannumber': 'count',
+        'loanamount': ['mean', 'sum', 'max', 'min'],
+    }
+
+    if 'closeddate' in historical_loans.columns:
+        historical_loans['is_closed'] = historical_loans['closeddate'].notnull().astype(int)
+        agg_dict['is_closed'] = 'sum'
+
+    hist_agg = historical_loans.groupby('customerid').agg(agg_dict).reset_index()
+
+    # Flatten column names
+    hist_agg.columns = ['customerid', 'hist_total_loans', 'hist_avg_loan_amount',
+                        'hist_total_loan_amount', 'hist_max_loan_amount', 'hist_min_loan_amount',
+                        'hist_closed_loans']
+
+    hist_agg['hist_open_loans'] = hist_agg['hist_total_loans'] - hist_agg['hist_closed_loans']
+    hist_agg['has_history'] = 1
+
+    print(f"\n✅ After aggregation:")
+    print(f"   Aggregated dataset: {len(hist_agg):,} rows, {hist_agg.shape[1]} features")
+
+    return hist_agg
+
+# ============================================================================
+# CHUNK 4: Final Merge + Save
+# ============================================================================
+
+def merge_historical_and_save(merged, hist_agg):
+    """
+    Merge historical loan aggregates into main dataset
+    Left join: Keep all current loans, add history where available
+    """
+    print("\n" + "=" * 70)
+    print("STEP 3: Merge Historical Aggregates + Save")
+    print("=" * 70)
+
+    print(f"\n📊 Before final merge:")
+    print(f"   Main dataset: {len(merged):,} rows")
+    print(f"   Historical aggregates: {len(hist_agg):,} rows")
+
+    # Left join: Keep all loans, add history if available
+    final_merged = merged.merge(
+        hist_agg,
+        on='customerid',
+        how='left'
+    )
+
+    # Fill missing historical values with 0 (customers with no history)
+    hist_cols = [col for col in final_merged.columns if col.startswith('hist_')]
+    final_merged[hist_cols] = final_merged[hist_cols].fillna(0)
+
+    # Fill has_history flag
+    final_merged['has_history'] = final_merged['has_history'].fillna(0).astype(int)
+
+    print(f"\n✅ After final merge:")
+    print(f"   Final dataset: {len(final_merged):,} rows, {final_merged.shape[1]} columns")
+
+    # Summary stats
+    customers_with_history = final_merged['has_history'].sum()
+    customers_without_history = len(final_merged) - customers_with_history
+
+    print(f"\n📊 Customer history breakdown:")
+    print(f"   • Customers WITH history: {customers_with_history:,} ({customers_with_history/len(final_merged)*100:.1f}%)")
+    print(f"   • Customers WITHOUT history: {customers_without_history:,} ({customers_without_history/len(final_merged)*100:.1f}%)")
+
+    # Save
+    output_path = PROCESSED_DATA_DIR / 'master_dataset_day2.csv'
+    final_merged.to_csv(output_path, index=False)
+    print(f"\n✅ Saved: {output_path}")
+    print(f"   Size: {output_path.stat().st_size / 1024**2:.2f} MB")
+
+    return final_merged
+
+# ============================================================================
+# MAIN
+# ============================================================================
+
+if __name__ == "__main__":
+    # Load Day 1 outputs
+    demographics, current_loans, historical_loans = load_day1_outputs()
+
+    # Step 1: Merge demographics + current loans
+    merged = merge_demographics_and_loans(demographics, current_loans)
+
+    # Step 2: Aggregate historical loans
+    hist_agg = aggregate_historical_loans(historical_loans)
+
+    # Step 3: Final merge + save
+    final_merged = merge_historical_and_save(merged, hist_agg)
+
+    print("\n" + "=" * 70)
+    print("FINAL MASTER DATASET PREVIEW")
+    print("=" * 70)
+    print(final_merged.head(3))
+    print("\n" + "=" * 70)
+    print("COLUMN SUMMARY")
+    print("=" * 70)
+    print(f"Total columns: {final_merged.shape[1]}")
+    print("\nColumn names:")
+    for i, col in enumerate(final_merged.columns, 1):
+        print(f"   {i:2d}. {col}")
+
+    print("\n" + "=" * 70)
+    print("🎉 DAY 2 COMPLETE!")
+    print("=" * 70)
+    print(f"✅ Master dataset created: {len(final_merged):,} rows × {final_merged.shape[1]} columns")
+    print(f"✅ Saved to: data/processed/master_dataset_day2.csv")
+    print(f"\n🎯 Next: Day 3 - Feature Engineering (create 20+ ML-ready features)")
+```
+
+**Run the final version:**
+```bash
+python src/data/merge_kaggle_data.py
+```
+
+**Expected output:**
+```
+======================================================================
+STEP 3: Merge Historical Aggregates + Save
+======================================================================
+
+📊 Before final merge:
+   Main dataset: 8,000 rows
+   Historical aggregates: 6,500 rows
+
+✅ After final merge:
+   Final dataset: 8,000 rows, 32 columns
+
+📊 Customer history breakdown:
+   • Customers WITH history: 6,500 (81.2%)
+   • Customers WITHOUT history: 1,500 (18.8%)
+
+✅ Saved: data/processed/master_dataset_day2.csv
+   Size: 2.45 MB
+
+======================================================================
 🎉 DAY 2 COMPLETE!
-================================================================================
+======================================================================
+✅ Master dataset created: 8,000 rows × 32 columns
+✅ Saved to: data/processed/master_dataset_day2.csv
 
-📊 Summary:
-   • Started with 3 separate datasets
-   • Merged loans + customers → (5000, 17)
-   • Aggregated 50,000 payment records → 5,000 summaries
-   • Final merged dataset: 5,000 rows × 17 columns
-   • Saved to: data/processed/merged_day2.csv
-
-✅ Dataset is ready for feature engineering!
-
-✅ Next: Run Day 3 to create predictive features
-   python src/day3_feature_engineering.py
+🎯 Next: Day 3 - Feature Engineering (create 20+ ML-ready features)
 ```
-
-### Step 2: Verify the merged file was created
-
-```bash
-ls -lh data/processed/merged_day2.csv
-```
-
-You should see:
-```
--rw-r--r-- 1 user user 1.1M Feb 11 10:30 merged_day2.csv
-```
-
-### Step 3: Inspect the merged data
-
-```bash
-# View first few rows
-head -n 5 data/processed/merged_day2.csv
-
-# Count columns
-head -n 1 data/processed/merged_day2.csv | tr ',' '\n' | wc -l
-```
-
-Expected: **17 columns**
-
----
-
-## 🎓 What You Just Built
-
-**You now have:**
-1. ✅ **Merged dataset** combining loans, customers, and payment history
-2. ✅ **17 features** ready for machine learning
-3. ✅ **Payment behavior summaries** (on-time rate, average days late, max late days)
-4. ✅ **No missing values** - clean dataset ready for feature engineering
-
-**Key Features Added:**
-- **From customers**: age, income, credit_score, total_debt, credit_limit
-- **From payments**: ontime_rate, avg_days_late, max_days_late, min_days_late
-
----
-
-## 🔍 Understanding the Code
-
-**What is a LEFT JOIN?**
-```python
-merged_df = loans_df.merge(customers_df, on='customer_id', how='left')
-```
-- Keeps ALL loans (5,000 rows)
-- Adds customer info where `customer_id` matches
-- If no match, fills with NaN (shouldn't happen with our data)
-
-**What is .groupby().agg()?**
-```python
-payment_agg = payments_df.groupby('customer_id').agg({
-    'payment_status': lambda x: (x == 'paid').mean(),
-    'days_late': ['mean', 'max', 'min']
-})
-```
-- Groups 50,000 payment records by `customer_id`
-- For each customer (5,000 groups):
-  - Calculate % of on-time payments: `(x == 'paid').mean()`
-  - Calculate average, max, min late days
-- Result: 50,000 rows → 5,000 summary rows
-
-**Example:**
-```
-Customer C00001 has 10 payment records:
-  [paid, paid, late, paid, paid, paid, late, paid, paid, paid]
-
-After aggregation:
-  ontime_rate = 8/10 = 0.8 (80% on-time)
-  avg_days_late = average of all days_late values
-  max_days_late = highest days_late value
-```
-
----
-
-## ❓ Troubleshooting
-
-**Error: "FileNotFoundError: loans_day1.csv"**
-```bash
-# You need to complete Day 1 first:
-python src/day1_load_explore.py
-```
-
-**Error: "KeyError: 'customer_id'"**
-```bash
-# Check your data has the correct column names:
-python -c "import pandas as pd; print(pd.read_csv('data/loans.csv').columns)"
-```
-
-**Warning: "Some loans have no matching customer"**
-- This means your loans.csv has `customer_id` values not in customers.csv
-- For production data, investigate these orphaned records
-- For our generated data, this shouldn't happen
 
 ---
 
@@ -469,28 +707,33 @@ python -c "import pandas as pd; print(pd.read_csv('data/loans.csv').columns)"
 
 Before moving to Day 3, verify:
 
-- [ ] day2_merge.py script created
-- [ ] Script ran successfully without errors
-- [ ] merged_day2.csv exists in data/processed/
-- [ ] File has 5,000 rows and 17 columns
-- [ ] No missing values reported
-- [ ] Understand left join and groupby aggregation
+- [ ] Script runs without errors: `python src/data/merge_kaggle_data.py`
+- [ ] Output file exists: `data/processed/master_dataset_day2.csv`
+- [ ] Dataset has ~8,000 rows and ~32 columns
+- [ ] No missing customerid values
+- [ ] Historical features filled with 0 for customers without history
 
 ---
 
-**🎉 Congratulations! Day 2 Complete!**
+## 🎯 What's Next?
 
-**You merged:**
-- 5,000 loan records
-- 5,000 customer records
-- 50,000 payment records
+**Day 3**: Feature Engineering
+- Create age from birthdate
+- Calculate loan-to-income ratio
+- Encode categorical variables (education, bank type)
+- Create payment delay features from historical data
+- Create 20+ ML-ready features
+- Output: `data/processed/engineered_day3.csv`
 
-**Into:** One unified dataset with 17 features!
+---
 
-**Next**: Day 3 - Feature Engineering (Create predictive features from raw data)
+## 📚 Key Concepts Learned
 
-**Ready?** Run:
-```bash
-# Go to Day 3 guide
-cat guide/week1/day3_guide.md
-```
+1. **Data Merging**: Left joins to preserve all current loans
+2. **Aggregation**: Converting multiple rows per customer to one summary row
+3. **Missing Data Handling**: Filling 0 for customers without historical data
+4. **Feature Creation**: Aggregating historical loan behavior into features
+5. **Data Validation**: Checking merge results and customer coverage
+
+**Time to complete**: ~45 minutes
+**Files created**: 2 (1 script + 1 master dataset CSV)
