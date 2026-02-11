@@ -1,1324 +1,1247 @@
-# Week 1, Day 3 -- Feature Engineering: Mining Gold from Historical Loan Data
+# DAY 3: Feature Engineering - Kaggle Credit Risk Dataset
 
-## What You Will Learn Today
+**Goal**: Engineer powerful predictive features from payment behavior, demographics, and loan history
 
-- How to engineer features from date columns (payment behavior)
-- How to calculate on-time payment rate, late payment rate, never paid rate
-- How to measure loan closure rate (completion vs abandonment)
-- How to create recency features (days since last loan)
-- How to encode categorical variables (employment, education)
-- How to create derived features (ratios, increases)
+**Time**: 60 minutes
 
-## Why This Matters
-
-Yesterday you merged three datasets and created 19 basic features. Today you will **engineer 16 additional powerful features** that will dramatically improve your credit risk model's accuracy.
-
-The Kaggle dataset provides historical loan records in `trainprevloans.csv` with date columns that tell the complete payment story:
-
-| Date Column | Meaning |
-|-------------|---------|
-| `creationdate` | When loan application was created |
-| `approveddate` | When loan was approved |
-| `firstduedate` | When first payment was due |
-| `firstrepaiddate` | When customer actually made first payment |
-| `closeddate` | When loan was fully closed/completed |
-
-The difference between `firstduedate` and `firstrepaiddate` reveals whether the customer paid on time, late, or never paid. The presence or absence of `closeddate` reveals whether they completed the loan or abandoned it.
-
-**Payment behavior is the #1 predictor of credit risk.** A customer who consistently pays late or never completes loans is high-risk, regardless of their demographics or current loan amount.
-
-Today you will transform raw dates into powerful behavioral metrics that capture credit risk patterns.
+**Prerequisites**: Day 2 completed (master_dataset_day2.csv exists)
 
 ---
 
-## Part 1: Verify Yesterday's Output
+## 📋 What You'll Build Today
 
-Before starting, confirm the master dataset from Day 2 exists:
+By the end of Day 3, you'll have:
+- ✅ Payment behavior features (on-time rate, late rate, never-paid rate)
+- ✅ Loan closure features (completion rate, abandonment rate)
+- ✅ Recency features (days since last loan)
+- ✅ Demographic features (age from birthdate)
+- ✅ Loan-to-history ratios (current loan vs historical average)
+- ✅ Categorical encodings (education, bank type)
+- ✅ Final dataset: `data/processed/master_dataset_day3.csv` with 40+ features
+
+---
+
+## Prerequisites Check
+
+**Verify Day 2 output exists:**
 
 ```bash
-ls -lh credit-risk-api/data/processed/master_dataset_day2.csv
+cd credit-risk-api
+ls -lh data/processed/master_dataset_day2.csv
+ls -lh data/raw/trainprevloans.csv
 ```
 
-**You should see:**
+**If missing:**
+```bash
+python src/data/merge_kaggle_data.py
 ```
--rw-r--r--  master_dataset_day2.csv  (~844 KB)
-```
-
-If the file is missing, go back and run `day2_practice.py` first.
 
 ---
 
-## Part 2: Building the Practice Script (8 Steps)
+## PART 1: Understanding Feature Engineering
 
-Create a new file: `guide/week1/day3_practice.py`
+**What is Feature Engineering?**
 
-Each step below shows **the complete file from first line to last**. The instruction is always: "Delete everything in the file and replace it with this." Do not try to add lines to the previous version - just replace the whole file each time.
+Transforming raw data into features that better represent the underlying patterns for machine learning.
+
+**Example:**
+
+Raw data:
+```
+birthdate: "1985-03-15"
+```
+
+Engineered feature:
+```
+age: 39 years
+age_group: "35-40"
+is_young: 0 (not under 25)
+```
+
+**Why it matters:**
+
+Payment behavior is the #1 predictor of credit risk. A customer who consistently pays late is high-risk, regardless of demographics.
+
+**Features we'll create today:**
+
+| Feature Category | Examples | Why It Matters |
+|-----------------|----------|----------------|
+| **Payment Behavior** | on-time rate, late rate, never-paid rate | Shows payment discipline |
+| **Loan Completion** | closure rate, abandonment rate | Shows loan commitment |
+| **Recency** | days since last loan | Recent borrowers may be riskier |
+| **Demographics** | age, education level | Age correlates with stability |
+| **Ratios** | current loan / avg historical loan | Borrowing more than usual is risky |
 
 ---
 
-### Step 1: Load Master Dataset and Historical Loans
+## PART 2: Build Feature Engineering Script (5 Chunks)
 
-Delete everything in `guide/week1/day3_practice.py` and replace it with this:
+We'll build `src/data/engineer_features.py` in 5 incremental steps.
+
+### Step 1: Chunk 1 - Load Data and Calculate Payment Timing
+
+Create a new file: `src/data/engineer_features.py`
+
+Add this code:
 
 ```python
 """
-Day 3 Practice: Feature Engineering from Historical Loans
-Credit Risk Scoring System
-
-Learning Goals:
-- Engineer features from date columns
-- Calculate payment behavior metrics (on-time, late, never paid rates)
-- Create recency features
-- Encode categorical variables
+Day 3: Feature Engineering from Kaggle Credit Risk dataset
 """
-
 import pandas as pd
 import numpy as np
 from pathlib import Path
+from datetime import datetime
 
-# Configure pandas display
-pd.set_option('display.max_columns', None)
-pd.set_option('display.width', 200)
+# ============================================================================
+# PATHS
+# ============================================================================
 
-print("="*80)
-print("DAY 3: FEATURE ENGINEERING FROM HISTORICAL LOANS")
-print("="*80)
+BASE_DIR = Path(__file__).parent.parent.parent
+RAW_DATA_DIR = BASE_DIR / 'data' / 'raw'
+PROCESSED_DATA_DIR = BASE_DIR / 'data' / 'processed'
 
-# Define paths
-PROCESSED_DIR = Path('credit-risk-api/data/processed')
-RAW_DIR = Path('credit-risk-api/data/raw')
+# ============================================================================
+# CHUNK 1: Load Data and Calculate Payment Timing
+# ============================================================================
 
-# Load datasets
-print("\n📂 STEP 1: Loading Data...")
-print("-" * 80)
+def load_data():
+    """Load master dataset and historical loans"""
+    print("=" * 70)
+    print("DAY 3: Feature Engineering")
+    print("=" * 70)
 
-master_df = pd.read_csv(PROCESSED_DIR / 'master_dataset_day2.csv')
-prev_loans = pd.read_csv(RAW_DIR / 'trainprevloans.csv')
+    print("\n📂 Loading data...")
 
-print(f"✅ Master dataset loaded: {master_df.shape}")
-print(f"✅ Previous loans loaded: {prev_loans.shape}")
+    master_df = pd.read_csv(PROCESSED_DATA_DIR / 'master_dataset_day2.csv')
+    print(f"   ✅ Master dataset: {master_df.shape}")
 
-print(f"\n📊 Current features in master_df: {master_df.shape[1]} columns")
-print("   Sample columns:", master_df.columns[:5].tolist(), "...")
+    historical_loans = pd.read_csv(RAW_DATA_DIR / 'trainprevloans.csv')
+    print(f"   ✅ Historical loans: {historical_loans.shape}")
+    print(f"   ✅ Customers with history: {historical_loans['customerid'].nunique():,}\n")
 
-print(f"\n📊 Previous loans columns ({prev_loans.shape[1]} total):")
-print("   ", prev_loans.columns.tolist())
+    return master_df, historical_loans
 
-print(f"\n🎯 Goal for today:")
-print("   Starting features: 19")
-print("   Target features: 35+ (adding 16+ new features)")
-print("   Focus: Payment behavior from date columns")
+
+def calculate_payment_behavior(historical_loans):
+    """
+    Calculate payment behavior features from historical loan dates
+
+    Features created:
+    - days_to_repay: firstrepaiddate - firstduedate (negative=early, positive=late)
+    - payment_status: 'on_time', 'late', 'never_paid'
+    """
+    print("=" * 70)
+    print("STEP 1: Calculate Payment Behavior from Dates")
+    print("=" * 70)
+
+    # Convert date columns
+    date_cols = ['approveddate', 'creationdate', 'closeddate', 'firstduedate', 'firstrepaiddate']
+    for col in date_cols:
+        if col in historical_loans.columns:
+            historical_loans[col] = pd.to_datetime(historical_loans[col], errors='coerce')
+
+    print("\n📊 Date columns converted to datetime")
+
+    # Calculate days to repay (positive = late, negative = early, NaN = never paid)
+    historical_loans['days_to_repay'] = (
+        historical_loans['firstrepaiddate'] - historical_loans['firstduedate']
+    ).dt.days
+
+    # Categorize payment status
+    def categorize_payment(days):
+        if pd.isna(days):
+            return 'never_paid'
+        elif days <= 0:
+            return 'on_time'
+        else:
+            return 'late'
+
+    historical_loans['payment_status'] = historical_loans['days_to_repay'].apply(categorize_payment)
+
+    print("\n✅ Payment behavior calculated:")
+    print(f"   Total historical loans: {len(historical_loans):,}")
+    print(f"\n   Payment status breakdown:")
+    print(historical_loans['payment_status'].value_counts())
+
+    return historical_loans
+
+
+if __name__ == "__main__":
+    master_df, historical_loans = load_data()
+    historical_loans = calculate_payment_behavior(historical_loans)
+
+    print("\n" + "=" * 70)
+    print("SAMPLE: Payment Behavior")
+    print("=" * 70)
+    print(historical_loans[['customerid', 'firstduedate', 'firstrepaiddate',
+                           'days_to_repay', 'payment_status']].head(10))
 ```
-
-Save the file.
 
 **Run it:**
-
 ```bash
-python guide/week1/day3_practice.py
+python src/data/engineer_features.py
 ```
 
-**What you should see:**
-
+**Expected output:**
 ```
-================================================================================
-DAY 3: FEATURE ENGINEERING FROM HISTORICAL LOANS
-================================================================================
+======================================================================
+DAY 3: Feature Engineering
+======================================================================
 
-📂 STEP 1: Loading Data...
---------------------------------------------------------------------------------
-✅ Master dataset loaded: (5000, 19)
-✅ Previous loans loaded: (15312, 10)
+📂 Loading data...
+   ✅ Master dataset: (8000, 32)
+   ✅ Historical loans: (25000, 18)
+   ✅ Customers with history: 6,500
 
-📊 Current features in master_df: 19 columns
-   Sample columns: ['customerid', 'systemloanid', 'loanamount', 'totaldue', 'termdays'] ...
+======================================================================
+STEP 1: Calculate Payment Behavior from Dates
+======================================================================
 
-📊 Previous loans columns (10 total):
-    ['customerid', 'systemloanid', 'loanamount', 'totaldue', 'termdays', 'creationdate', 'approveddate', 'firstduedate', 'firstrepaiddate', 'closeddate']
+📊 Date columns converted to datetime
 
-🎯 Goal for today:
-   Starting features: 19
-   Target features: 35+ (adding 16+ new features)
-   Focus: Payment behavior from date columns
+✅ Payment behavior calculated:
+   Total historical loans: 25,000
+
+   Payment status breakdown:
+on_time        15,000
+late            8,000
+never_paid      2,000
 ```
-
-**What just happened:**
-
-- Loaded the 19-feature master dataset from Day 2 (5,000 customers).
-- Reloaded `trainprevloans.csv` which has 15,312 historical loan records across 4,515 customers.
-- Yesterday we used `prev_loans` to create basic aggregations (count, sum, mean). Today we will use the **date columns** (`creationdate`, `approveddate`, `firstduedate`, `firstrepaiddate`, `closeddate`) to engineer payment behavior features.
-- Notice that `prev_loans` has 10 columns, and 5 of them are dates. These dates contain the raw material for our most powerful predictive features.
 
 ---
 
-### Step 2: Convert Date Strings to Datetime Objects
+### Step 2: Chunk 2 - Aggregate Payment Behavior Per Customer
 
-Delete everything in `guide/week1/day3_practice.py` and replace it with this:
-
-```python
-"""
-Day 3 Practice: Feature Engineering from Historical Loans
-"""
-
-import pandas as pd
-import numpy as np
-from pathlib import Path
-
-pd.set_option('display.max_columns', None)
-pd.set_option('display.width', 200)
-
-print("="*80)
-print("DAY 3: FEATURE ENGINEERING")
-print("="*80)
-
-PROCESSED_DIR = Path('credit-risk-api/data/processed')
-RAW_DIR = Path('credit-risk-api/data/raw')
-
-master_df = pd.read_csv(PROCESSED_DIR / 'master_dataset_day2.csv')
-prev_loans = pd.read_csv(RAW_DIR / 'trainprevloans.csv')
-
-print(f"✅ Loaded: master_df {master_df.shape}, prev_loans {prev_loans.shape}\n")
-
-# --- NEW CODE BELOW ---
-
-print("="*80)
-print("STEP 2: Convert Date Strings to Datetime Objects")
-print("="*80)
-
-print("\n🔍 Before conversion:")
-print("Data types of date columns:")
-print(prev_loans[['firstduedate', 'firstrepaiddate', 'closeddate']].dtypes)
-
-print("\nSample raw values (text strings):")
-print(prev_loans[['customerid', 'firstduedate', 'firstrepaiddate', 'closeddate']].head(5))
-
-# Convert all date columns from text to datetime
-date_cols = ['creationdate', 'approveddate', 'firstduedate', 'firstrepaiddate', 'closeddate']
-
-for col in date_cols:
-    prev_loans[col] = pd.to_datetime(prev_loans[col], errors='coerce')
-
-print("\n✅ After conversion:")
-print("Data types of date columns:")
-print(prev_loans[['firstduedate', 'firstrepaiddate', 'closeddate']].dtypes)
-
-print("\nSample converted values (datetime objects):")
-print(prev_loans[['customerid', 'firstduedate', 'firstrepaiddate', 'closeddate']].head(5))
-
-print("\n💡 Why this matters:")
-print("   Before: dates are TEXT → cannot subtract, cannot compute days")
-print("   After:  dates are DATETIME → can subtract to get time difference")
-print("   Example: firstrepaiddate - firstduedate = days late or early")
-print("   Missing dates become NaT (Not a Time), similar to NaN")
-```
-
-Save and run:
-
-```bash
-python guide/week1/day3_practice.py
-```
-
-**What you should see:**
-
-```
-================================================================================
-STEP 2: Convert Date Strings to Datetime Objects
-================================================================================
-
-🔍 Before conversion:
-Data types of date columns:
-firstduedate       object
-firstrepaiddate    object
-closeddate         object
-dtype: object
-
-Sample raw values (text strings):
-     customerid  firstduedate firstrepaiddate  closeddate
-0  CUST_000001    2023-02-20      2023-02-25  2023-07-22
-1  CUST_000001    2023-02-20      2023-02-20  2024-02-15
-2  CUST_000001    2023-02-20      2023-02-20  2024-02-15
-3  CUST_000001    2023-02-20      2023-02-25         NaN
-4  CUST_000001    2023-02-20      2023-02-25  2023-03-10
-
-✅ After conversion:
-Data types of date columns:
-firstduedate       datetime64[ns]
-firstrepaiddate    datetime64[ns]
-closeddate         datetime64[ns]
-dtype: object
-
-Sample converted values (datetime objects):
-     customerid firstduedate firstrepaiddate closeddate
-0  CUST_000001   2023-02-20      2023-02-25 2023-07-22
-1  CUST_000001   2023-02-20      2023-02-20 2024-02-15
-2  CUST_000001   2023-02-20      2023-02-20 2024-02-15
-3  CUST_000001   2023-02-20      2023-02-25        NaT
-4  CUST_000001   2023-02-20      2023-02-25 2023-03-10
-
-💡 Why this matters:
-   Before: dates are TEXT → cannot subtract, cannot compute days
-   After:  dates are DATETIME → can subtract to get time difference
-   Example: firstrepaiddate - firstduedate = days late or early
-   Missing dates become NaT (Not a Time), similar to NaN
-```
-
-**What just happened:**
-
-- `pd.to_datetime(col, errors='coerce')` converts text strings like `'2023-02-20'` into datetime objects that Python recognizes as actual dates.
-- **Before conversion:** dtype is `object` (generic text). Python treats these as ordinary strings with no concept of chronological order or time arithmetic.
-- **After conversion:** dtype is `datetime64[ns]` (datetime with nanosecond precision). Python now knows these are dates and can perform date arithmetic.
-- `errors='coerce'` means "if a date value is invalid or missing (empty cell), convert it to `NaT` (Not a Time) instead of raising an error." `NaT` is pandas' version of `NaN` for datetime columns.
-- Row 3 has `NaT` in `closeddate` because that loan was never closed (still open or defaulted).
-- **Why this is critical:** Once dates are datetime objects, we can subtract them to compute time differences. For example, `firstrepaiddate - firstduedate` will give us the number of days between when payment was due and when it was actually made. This tells us if the customer paid early, on time, late, or never paid.
-
----
-
-### Step 3: Calculate Days to Repayment (Payment Timing)
-
-Delete everything in `guide/week1/day3_practice.py` and replace it with this:
+**Delete everything in `src/data/engineer_features.py` and replace with this:**
 
 ```python
 """
-Day 3 Practice: Feature Engineering
+Day 3: Feature Engineering from Kaggle Credit Risk dataset
 """
-
 import pandas as pd
 import numpy as np
 from pathlib import Path
+from datetime import datetime
 
-pd.set_option('display.max_columns', None)
-pd.set_option('display.width', 200)
+# ============================================================================
+# PATHS
+# ============================================================================
 
-print("="*80)
-print("DAY 3: FEATURE ENGINEERING")
-print("="*80)
+BASE_DIR = Path(__file__).parent.parent.parent
+RAW_DATA_DIR = BASE_DIR / 'data' / 'raw'
+PROCESSED_DATA_DIR = BASE_DIR / 'data' / 'processed'
 
-PROCESSED_DIR = Path('credit-risk-api/data/processed')
-RAW_DIR = Path('credit-risk-api/data/raw')
+# ============================================================================
+# CHUNK 1: Load Data and Calculate Payment Timing
+# ============================================================================
 
-master_df = pd.read_csv(PROCESSED_DIR / 'master_dataset_day2.csv')
-prev_loans = pd.read_csv(RAW_DIR / 'trainprevloans.csv')
+def load_data():
+    """Load master dataset and historical loans"""
+    print("=" * 70)
+    print("DAY 3: Feature Engineering")
+    print("=" * 70)
 
-# Convert dates
-date_cols = ['creationdate', 'approveddate', 'firstduedate', 'firstrepaiddate', 'closeddate']
-for col in date_cols:
-    prev_loans[col] = pd.to_datetime(prev_loans[col], errors='coerce')
+    print("\n📂 Loading data...")
 
-print(f"✅ Loaded and converted dates\n")
+    master_df = pd.read_csv(PROCESSED_DATA_DIR / 'master_dataset_day2.csv')
+    print(f"   ✅ Master dataset: {master_df.shape}")
 
-# --- NEW CODE BELOW ---
+    historical_loans = pd.read_csv(RAW_DATA_DIR / 'trainprevloans.csv')
+    print(f"   ✅ Historical loans: {historical_loans.shape}\n")
 
-print("="*80)
-print("STEP 3: Calculate Days to Repayment")
-print("="*80)
+    return master_df, historical_loans
 
-# Calculate time difference between actual repayment and due date
-prev_loans['days_to_repay'] = (prev_loans['firstrepaiddate'] - prev_loans['firstduedate']).dt.days
 
-print("\n📊 Days to Repayment - Summary Statistics:")
-print(prev_loans['days_to_repay'].describe())
+def calculate_payment_behavior(historical_loans):
+    """Calculate payment behavior features from historical loan dates"""
+    print("=" * 70)
+    print("STEP 1: Calculate Payment Behavior from Dates")
+    print("=" * 70)
 
-print("\n🔍 Payment Timing Breakdown:")
-total = len(prev_loans)
+    # Convert date columns
+    date_cols = ['approveddate', 'creationdate', 'closeddate', 'firstduedate', 'firstrepaiddate']
+    for col in date_cols:
+        if col in historical_loans.columns:
+            historical_loans[col] = pd.to_datetime(historical_loans[col], errors='coerce')
 
-# Categorize payments by timing
-on_time = (prev_loans['days_to_repay'] <= 0).sum()
-late_1_7 = ((prev_loans['days_to_repay'] > 0) & (prev_loans['days_to_repay'] <= 7)).sum()
-late_8_30 = ((prev_loans['days_to_repay'] > 7) & (prev_loans['days_to_repay'] <= 30)).sum()
-late_30plus = (prev_loans['days_to_repay'] > 30).sum()
-never_paid = prev_loans['days_to_repay'].isnull().sum()
+    # Calculate days to repay
+    historical_loans['days_to_repay'] = (
+        historical_loans['firstrepaiddate'] - historical_loans['firstduedate']
+    ).dt.days
 
-print(f"\n   Category              Count    Percentage  Risk Level")
-print(f"   {'='*60}")
-print(f"   On-time (≤ 0 days):   {on_time:6,}   {on_time/total*100:5.1f}%     ✅ LOW")
-print(f"   Late 1-7 days:        {late_1_7:6,}   {late_1_7/total*100:5.1f}%     ⚠️  MEDIUM")
-print(f"   Late 8-30 days:       {late_8_30:6,}   {late_8_30/total*100:5.1f}%     ⚠️  HIGH")
-print(f"   Late 30+ days:        {late_30plus:6,}   {late_30plus/total*100:5.1f}%     ❌ VERY HIGH")
-print(f"   Never paid (NaN):     {never_paid:6,}   {never_paid/total*100:5.1f}%     ❌ DEFAULT")
+    # Categorize payment status
+    def categorize_payment(days):
+        if pd.isna(days):
+            return 'never_paid'
+        elif days <= 0:
+            return 'on_time'
+        else:
+            return 'late'
 
-print("\n👀 Sample loans showing payment behavior:")
-sample_cols = ['customerid', 'loanamount', 'firstduedate', 'firstrepaiddate', 'days_to_repay']
-print(prev_loans[sample_cols].head(10))
+    historical_loans['payment_status'] = historical_loans['days_to_repay'].apply(categorize_payment)
 
-print("\n💡 How to interpret days_to_repay:")
-print("   • NEGATIVE days: Customer paid EARLY (before due date)")
-print("     Example: -5 means paid 5 days early → Excellent credit behavior!")
-print()
-print("   • ZERO days: Customer paid EXACTLY on time")
-print("     Example: 0 means paid on the due date → Good credit behavior!")
-print()
-print("   • POSITIVE days: Customer paid LATE (after due date)")
-print("     Example: +7 means paid 7 days late → Poor credit behavior!")
-print("     Higher number = worse (30+ days late is serious delinquency)")
-print()
-print("   • NaN: Customer NEVER PAID (defaulted or abandoned loan)")
-print("     Missing value indicates loan was never repaid → Very bad!")
-```
+    print(f"\n✅ Payment behavior calculated for {len(historical_loans):,} loans\n")
 
-Save and run:
+    return historical_loans
 
-```bash
-python guide/week1/day3_practice.py
-```
 
-**What you should see:**
+# ============================================================================
+# CHUNK 2: Aggregate Payment Behavior Per Customer
+# ============================================================================
 
-```
-================================================================================
-STEP 3: Calculate Days to Repayment
-================================================================================
+def aggregate_payment_features(historical_loans):
+    """
+    Aggregate payment behavior per customer
 
-📊 Days to Repayment - Summary Statistics:
-count    14349.000000
-mean         2.542...
-std          4.123...
-min        -10.000000
-25%          0.000000
-50%          0.000000
-75%          5.000000
-max         45.000000
-Name: days_to_repay, dtype: float64
+    Features created:
+    - payment_ontime_rate: % of loans paid on time
+    - payment_late_rate: % of loans paid late
+    - payment_never_rate: % of loans never paid
+    - avg_days_late: Average days late (for late payments)
+    - max_days_late: Maximum days late ever
+    """
+    print("=" * 70)
+    print("STEP 2: Aggregate Payment Behavior Per Customer")
+    print("=" * 70)
 
-🔍 Payment Timing Breakdown:
+    # Count payment statuses per customer
+    payment_counts = historical_loans.groupby(['customerid', 'payment_status']).size().unstack(fill_value=0)
 
-   Category              Count    Percentage  Risk Level
-   ============================================================
-   On-time (≤ 0 days):    9,919    64.8%     ✅ LOW
-   Late 1-7 days:         3,467    22.6%     ⚠️  MEDIUM
-   Late 8-30 days:          963     6.3%     ⚠️  HIGH
-   Late 30+ days:             0     0.0%     ❌ VERY HIGH
-   Never paid (NaN):        963     6.3%     ❌ DEFAULT
+    # Calculate total loans per customer
+    payment_counts['total_loans'] = payment_counts.sum(axis=1)
 
-👀 Sample loans showing payment behavior:
-     customerid  loanamount firstduedate firstrepaiddate  days_to_repay
-0  CUST_000001       46910   2023-02-20      2023-02-25            5.0
-1  CUST_000001       24015   2023-02-20      2023-02-20            0.0
-2  CUST_000001       34645   2023-02-20      2023-02-20            0.0
-3  CUST_000001       59869   2023-02-20      2023-02-25            5.0
-4  CUST_000001       61315   2023-02-20      2023-02-25            5.0
+    # Calculate rates
+    payment_features = pd.DataFrame()
+    payment_features['customerid'] = payment_counts.index
 
-💡 How to interpret days_to_repay:
-   • NEGATIVE days: Customer paid EARLY (before due date)
-     Example: -5 means paid 5 days early → Excellent credit behavior!
-
-   • ZERO days: Customer paid EXACTLY on time
-     Example: 0 means paid on the due date → Good credit behavior!
-
-   • POSITIVE days: Customer paid LATE (after due date)
-     Example: +7 means paid 7 days late → Poor credit behavior!
-     Higher number = worse (30+ days late is serious delinquency)
-
-   • NaN: Customer NEVER PAID (defaulted or abandoned loan)
-     Missing value indicates loan was never repaid → Very bad!
-```
-
-**What just happened:**
-
-- `(prev_loans['firstrepaiddate'] - prev_loans['firstduedate']).dt.days` performs date subtraction:
-  - When you subtract two datetime columns, pandas returns a `timedelta` object (time difference).
-  - `.dt.days` extracts just the number of days as an integer.
-
-- **New column created:** `days_to_repay` with these meanings:
-  - **Negative value** (e.g., -5): Customer paid 5 days **before** the due date → Proactive, low-risk behavior
-  - **Zero**: Paid exactly on time → Responsible, low-risk behavior
-  - **Positive value** (e.g., +7): Customer paid 7 days **after** due date → Late payment, higher-risk behavior
-  - **NaN (missing)**: Customer never made the first payment → Default or abandonment, very high risk
-
-- **Key statistics:**
-  - **64.8%** of loans paid on time or early (majority are good borrowers)
-  - **22.6%** were 1-7 days late (minor delinquency)
-  - **6.3%** were 8-30 days late (moderate delinquency)
-  - **6.3%** were never paid (defaults)
-
-- This single feature is **extremely predictive** because payment history is the strongest indicator of future payment behavior. A customer with a pattern of late payments or defaults is much more likely to default on their next loan.
-
----
-
-I'll continue with Steps 4-8 in the next message. This format matches Day 2 exactly. Should I continue building the full guide?
-### Step 4: Aggregate Payment Behavior per Customer
-
-Delete everything in `guide/week1/day3_practice.py` and replace it with this:
-
-```python
-"""
-Day 3 Practice: Feature Engineering
-"""
-
-import pandas as pd
-import numpy as np
-from pathlib import Path
-
-pd.set_option('display.max_columns', None)
-pd.set_option('display.width', 200)
-
-print("="*80)
-print("DAY 3: FEATURE ENGINEERING")
-print("="*80)
-
-PROCESSED_DIR = Path('credit-risk-api/data/processed')
-RAW_DIR = Path('credit-risk-api/data/raw')
-
-master_df = pd.read_csv(PROCESSED_DIR / 'master_dataset_day2.csv')
-prev_loans = pd.read_csv(RAW_DIR / 'trainprevloans.csv')
-
-# Convert dates
-date_cols = ['creationdate', 'approveddate', 'firstduedate', 'firstrepaiddate', 'closeddate']
-for col in date_cols:
-    prev_loans[col] = pd.to_datetime(prev_loans[col], errors='coerce')
-
-# Calculate days to repay
-prev_loans['days_to_repay'] = (prev_loans['firstrepaiddate'] - prev_loans['firstduedate']).dt.days
-
-print(f"✅ Prepared prev_loans with days_to_repay\n")
-
-# --- NEW CODE BELOW ---
-
-print("="*80)
-print("STEP 4: Aggregate Payment Behavior per Customer")
-print("="*80)
-
-print("\n🔧 For each customer, calculate their payment behavior summary...")
-
-payment_features = []
-
-for customer_id, group in prev_loans.groupby('customerid'):
-    features = {'customerid': customer_id}
-    
-    total_loans = len(group)
-    
-    # On-time rate (paid on or before due date)
-    on_time_count = (group['days_to_repay'] <= 0).sum()
-    features['hist_ontime_rate'] = on_time_count / total_loans if total_loans > 0 else 0
-    
-    # Late rate (paid after due date)
-    late_count = (group['days_to_repay'] > 0).sum()
-    features['hist_late_rate'] = late_count / total_loans if total_loans > 0 else 0
-    
-    # Never paid rate (NaN in days_to_repay)
-    never_paid_count = group['days_to_repay'].isnull().sum()
-    features['hist_never_paid_rate'] = never_paid_count / total_loans if total_loans > 0 else 0
-    
-    # Average days late (for late payments only, excluding on-time and never-paid)
-    late_payments = group[group['days_to_repay'] > 0]['days_to_repay']
-    features['hist_avg_days_late'] = late_payments.mean() if len(late_payments) > 0 else 0
-    
-    # Max days late
-    features['hist_max_days_late'] = group['days_to_repay'].max() if group['days_to_repay'].notna().any() else 0
-    
-    # Closure rate (loans that were closed vs still open)
-    closed_count = group['closeddate'].notna().sum()
-    features['hist_closure_rate'] = closed_count / total_loans if total_loans > 0 else 0
-    
-    # Days since last loan (recency)
-    most_recent = group['approveddate'].max()
-    if pd.notna(most_recent):
-        reference_date = pd.Timestamp('2024-07-01')  # Assume current date
-        features['days_since_last_loan'] = (reference_date - most_recent).days
+    if 'on_time' in payment_counts.columns:
+        payment_features['payment_ontime_rate'] = payment_counts['on_time'] / payment_counts['total_loans']
     else:
-        features['days_since_last_loan'] = 9999  # Very old or no loans
-    
-    payment_features.append(features)
+        payment_features['payment_ontime_rate'] = 0
 
-payment_behavior_df = pd.DataFrame(payment_features)
-
-print(f"\n✅ Payment behavior features created: {payment_behavior_df.shape}")
-print(f"   Customers: {len(payment_behavior_df):,}")
-print(f"   New features: 7")
-
-print(f"\n📊 New feature columns:")
-for col in payment_behavior_df.columns[1:]:  # Skip customerid
-    print(f"   • {col}")
-
-print(f"\n👀 Sample customers:")
-print(payment_behavior_df.head())
-
-print(f"\n💡 Feature meanings:")
-print("   hist_ontime_rate:      Fraction of loans paid on/before due date (0-1)")
-print("   hist_late_rate:        Fraction of loans paid late (0-1)")
-print("   hist_never_paid_rate:  Fraction of loans never repaid (0-1)")
-print("   hist_avg_days_late:    Average days late when payment was late")
-print("   hist_max_days_late:    Worst case - maximum days late ever")
-print("   hist_closure_rate:     Fraction of loans completed vs abandoned (0-1)")
-print("   days_since_last_loan:  Days since most recent loan approval (recency)")
-```
-
-Save and run:
-
-```bash
-python guide/week1/day3_practice.py
-```
-
-**Expected output:**
-
-```
-================================================================================
-STEP 4: Aggregate Payment Behavior per Customer
-================================================================================
-
-🔧 For each customer, calculate their payment behavior summary...
-
-✅ Payment behavior features created: (4515, 8)
-   Customers: 4,515
-   New features: 7
-
-📊 New feature columns:
-   • hist_ontime_rate
-   • hist_late_rate
-   • hist_never_paid_rate
-   • hist_avg_days_late
-   • hist_max_days_late
-   • hist_closure_rate
-   • days_since_last_loan
-
-👀 Sample customers:
-     customerid  hist_ontime_rate  hist_late_rate  hist_never_paid_rate  hist_avg_days_late  hist_max_days_late  hist_closure_rate  days_since_last_loan
-0  CUST_000001            0.375           0.625                   0.0            3.800000                 5.0              0.625                   310
-1  CUST_000002            0.800           0.200                   0.0            2.000000                 2.0              0.600                   310
-2  CUST_000003            1.000           0.000                   0.0            0.000000                 0.0              1.000                   310
-3  CUST_000004            0.500           0.500                   0.0            5.000000                 5.0              1.000                   310
-4  CUST_000005            0.333           0.667                   0.0            4.500000                 7.0              0.333                   310
-
-💡 Feature meanings:
-   hist_ontime_rate:      Fraction of loans paid on/before due date (0-1)
-   hist_late_rate:        Fraction of loans paid late (0-1)
-   hist_never_paid_rate:  Fraction of loans never repaid (0-1)
-   hist_avg_days_late:    Average days late when payment was late
-   hist_max_days_late:    Worst case - maximum days late ever
-   hist_closure_rate:     Fraction of loans completed vs abandoned (0-1)
-   days_since_last_loan:  Days since most recent loan approval (recency)
-```
-
-**What just happened:**
-
-- `.groupby('customerid')` groups all historical loans by customer, so we can compute per-customer statistics.
-- For each customer's group of loans, we calculated 7 new features:
-
-1. **hist_ontime_rate**: What fraction of their loans were paid on time or early?
-   - Customer `CUST_000001`: Only 37.5% on-time (bad!)
-   - Customer `CUST_000003`: 100% on-time (excellent!)
-
-2. **hist_late_rate**: What fraction were paid late?
-   - Customer `CUST_000001`: 62.5% late (high risk!)
-
-3. **hist_never_paid_rate**: What fraction were never repaid?
-   - These customers have 0% never-paid, but others in the dataset will have non-zero values
-
-4. **hist_avg_days_late**: When they DID pay late, how late on average?
-   - Customer `CUST_000001`: 3.8 days late on average
-
-5. **hist_max_days_late**: What's their worst payment delay ever?
-   - Customer `CUST_000005`: Maximum 7 days late
-
-6. **hist_closure_rate**: What fraction of loans did they complete vs abandon?
-   - Customer `CUST_000001`: Only 62.5% closure rate (meaning 3 out of 8 loans are still open or defaulted)
-
-7. **days_since_last_loan**: How long ago was their most recent loan?
-   - All showing 310 days (reference date 2024-07-01 minus their most recent approval date)
-   - Recent borrowers (low days) may be financially stressed
-
-- These features are **behavioral gold**. A customer with:
-  - Low on-time rate → High risk
-  - High never-paid rate → Very high risk
-  - Low closure rate → High risk
-  - Recent last loan (low days_since) → May be over-leveraged
-
-- Result: 4,515 customers with history (485 customers have NO history and won't appear here yet).
-
----
-
-
-### Step 5: Merge Payment Features and Handle Missing Values
-
-Delete everything in `guide/week1/day3_practice.py` and replace it with this:
-
-```python
-"""
-Day 3 Practice: Feature Engineering
-"""
-
-import pandas as pd
-import numpy as np
-from pathlib import Path
-
-pd.set_option('display.max_columns', None)
-pd.set_option('display.width', 200)
-
-print("="*80)
-print("DAY 3: FEATURE ENGINEERING")
-print("="*80)
-
-PROCESSED_DIR = Path('credit-risk-api/data/processed')
-RAW_DIR = Path('credit-risk-api/data/raw')
-
-master_df = pd.read_csv(PROCESSED_DIR / 'master_dataset_day2.csv')
-prev_loans = pd.read_csv(RAW_DIR / 'trainprevloans.csv')
-
-# Convert dates and calculate days_to_repay
-date_cols = ['creationdate', 'approveddate', 'firstduedate', 'firstrepaiddate', 'closeddate']
-for col in date_cols:
-    prev_loans[col] = pd.to_datetime(prev_loans[col], errors='coerce')
-prev_loans['days_to_repay'] = (prev_loans['firstrepaiddate'] - prev_loans['firstduedate']).dt.days
-
-# Aggregate payment behavior
-payment_features = []
-for customer_id, group in prev_loans.groupby('customerid'):
-    features = {'customerid': customer_id}
-    total_loans = len(group)
-    features['hist_ontime_rate'] = (group['days_to_repay'] <= 0).sum() / total_loans
-    features['hist_late_rate'] = (group['days_to_repay'] > 0).sum() / total_loans
-    features['hist_never_paid_rate'] = group['days_to_repay'].isnull().sum() / total_loans
-    late_payments = group[group['days_to_repay'] > 0]['days_to_repay']
-    features['hist_avg_days_late'] = late_payments.mean() if len(late_payments) > 0 else 0
-    features['hist_max_days_late'] = group['days_to_repay'].max() if group['days_to_repay'].notna().any() else 0
-    features['hist_closure_rate'] = group['closeddate'].notna().sum() / total_loans
-    most_recent = group['approveddate'].max()
-    features['days_since_last_loan'] = (pd.Timestamp('2024-07-01') - most_recent).days if pd.notna(most_recent) else 9999
-    payment_features.append(features)
-
-payment_behavior_df = pd.DataFrame(payment_features)
-
-print(f"✅ Payment features aggregated: {payment_behavior_df.shape}\n")
-
-# --- NEW CODE BELOW ---
-
-print("="*80)
-print("STEP 5: Merge Payment Features into Master Dataset")
-print("="*80)
-
-print(f"Before merge:")
-print(f"   Master DF:   {master_df.shape}")
-print(f"   Payment DF:  {payment_behavior_df.shape}")
-
-# Merge payment features
-master_df = master_df.merge(payment_behavior_df, on='customerid', how='left')
-
-print(f"\nAfter merge:")
-print(f"   Master DF:   {master_df.shape}")
-print(f"   Columns added: 7")
-
-# Check for missing values
-print(f"\n🔍 Checking for customers with NO loan history...")
-missing_hist = master_df['hist_ontime_rate'].isnull().sum()
-print(f"   Customers with missing payment history: {missing_hist:,}")
-print(f"   ({missing_hist/len(master_df)*100:.1f}% of total)")
-
-print(f"\n🔧 Filling missing values for first-time borrowers...")
-
-# Fill NaN for customers with no history
-payment_cols = ['hist_ontime_rate', 'hist_late_rate', 'hist_never_paid_rate',
-                'hist_avg_days_late', 'hist_max_days_late', 'hist_closure_rate', 'days_since_last_loan']
-
-for col in payment_cols:
-    if col == 'days_since_last_loan':
-        master_df[col] = master_df[col].fillna(9999)  # Very old/no loans
+    if 'late' in payment_counts.columns:
+        payment_features['payment_late_rate'] = payment_counts['late'] / payment_counts['total_loans']
     else:
-        master_df[col] = master_df[col].fillna(0)
+        payment_features['payment_late_rate'] = 0
 
-print(f"✅ Filled missing values:")
-print(f"   • hist_ontime_rate = 0 (no history = no on-time payments)")
-print(f"   • hist_late_rate = 0")
-print(f"   • hist_never_paid_rate = 0")
-print(f"   • hist_avg_days_late = 0")
-print(f"   • hist_max_days_late = 0")
-print(f"   • hist_closure_rate = 0")
-print(f"   • days_since_last_loan = 9999 (very old/no loans)")
+    if 'never_paid' in payment_counts.columns:
+        payment_features['payment_never_rate'] = payment_counts['never_paid'] / payment_counts['total_loans']
+    else:
+        payment_features['payment_never_rate'] = 0
 
-print(f"\nMissing values remaining: {master_df.isnull().sum().sum()}")
+    # Calculate average and max days late (only for late payments)
+    late_payments = historical_loans[historical_loans['payment_status'] == 'late'].copy()
+
+    if len(late_payments) > 0:
+        avg_late = late_payments.groupby('customerid')['days_to_repay'].mean().reset_index()
+        avg_late.columns = ['customerid', 'avg_days_late']
+
+        max_late = late_payments.groupby('customerid')['days_to_repay'].max().reset_index()
+        max_late.columns = ['customerid', 'max_days_late']
+
+        payment_features = payment_features.merge(avg_late, on='customerid', how='left')
+        payment_features = payment_features.merge(max_late, on='customerid', how='left')
+    else:
+        payment_features['avg_days_late'] = 0
+        payment_features['max_days_late'] = 0
+
+    # Fill missing values (customers with no late payments)
+    payment_features['avg_days_late'] = payment_features['avg_days_late'].fillna(0)
+    payment_features['max_days_late'] = payment_features['max_days_late'].fillna(0)
+
+    print(f"\n✅ Payment features aggregated:")
+    print(f"   Customers with payment history: {len(payment_features):,}")
+    print(f"\n   Features created:")
+    for col in payment_features.columns:
+        if col != 'customerid':
+            print(f"      • {col}")
+
+    return payment_features
+
+
+if __name__ == "__main__":
+    master_df, historical_loans = load_data()
+    historical_loans = calculate_payment_behavior(historical_loans)
+    payment_features = aggregate_payment_features(historical_loans)
+
+    print("\n" + "=" * 70)
+    print("SAMPLE: Payment Features")
+    print("=" * 70)
+    print(payment_features.head())
 ```
 
-Save and run:
-
+**Run it:**
 ```bash
-python guide/week1/day3_practice.py
+python src/data/engineer_features.py
 ```
 
 **Expected output:**
-
 ```
-================================================================================
-STEP 5: Merge Payment Features into Master Dataset
-================================================================================
+======================================================================
+STEP 2: Aggregate Payment Behavior Per Customer
+======================================================================
 
-Before merge:
-   Master DF:   (5000, 19)
-   Payment DF:  (4515, 8)
+✅ Payment features aggregated:
+   Customers with payment history: 6,500
 
-After merge:
-   Master DF:   (5000, 26)
-   Columns added: 7
-
-🔍 Checking for customers with NO loan history...
-   Customers with missing payment history: 485
-   (9.7% of total)
-
-🔧 Filling missing values for first-time borrowers...
-✅ Filled missing values:
-   • hist_ontime_rate = 0 (no history = no on-time payments)
-   • hist_late_rate = 0
-   • hist_never_paid_rate = 0
-   • hist_avg_days_late = 0
-   • hist_max_days_late = 0
-   • hist_closure_rate = 0
-   • days_since_last_loan = 9999 (very old/no loans)
-
-Missing values remaining: 0
+   Features created:
+      • payment_ontime_rate
+      • payment_late_rate
+      • payment_never_rate
+      • avg_days_late
+      • max_days_late
 ```
-
-**What just happened:**
-
-- `.merge(payment_behavior_df, on='customerid', how='left')` joins the payment features onto the master dataset.
-- `how='left'` means "keep all 5,000 customers from master_df, even if they don't appear in payment_behavior_df."
-- 485 customers have NO historical loans, so their payment features are `NaN` after the merge.
-- `.fillna()` replaces missing values with logical defaults:
-  - Payment rates → 0 (no history means zero on-time rate, zero late rate, etc.)
-  - days_since_last_loan → 9999 (a very large number indicating "no recent loans" or "first-time borrower")
-- After filling, there are zero missing values in the dataset.
-- Dataset grew from 19 → 26 features (added 7 payment behavior features).
 
 ---
 
-### Step 6: Encode Categorical Variables
+### Step 3: Chunk 3 - Create Loan Closure and Recency Features
 
-Delete everything in `guide/week1/day3_practice.py` and replace it with this:
+**Delete everything in `src/data/engineer_features.py` and replace with this:**
 
 ```python
 """
-Day 3 Practice: Feature Engineering - Nearly complete!
+Day 3: Feature Engineering from Kaggle Credit Risk dataset
 """
-
 import pandas as pd
 import numpy as np
 from pathlib import Path
+from datetime import datetime
 
-pd.set_option('display.max_columns', None)
-pd.set_option('display.width', 200)
+# ============================================================================
+# PATHS
+# ============================================================================
 
-print("="*80)
-print("DAY 3: FEATURE ENGINEERING")
-print("="*80)
+BASE_DIR = Path(__file__).parent.parent.parent
+RAW_DATA_DIR = BASE_DIR / 'data' / 'raw'
+PROCESSED_DATA_DIR = BASE_DIR / 'data' / 'processed'
 
-PROCESSED_DIR = Path('credit-risk-api/data/processed')
-RAW_DIR = Path('credit-risk-api/data/raw')
+# ============================================================================
+# CHUNK 1: Load Data and Calculate Payment Timing
+# ============================================================================
 
-master_df = pd.read_csv(PROCESSED_DIR / 'master_dataset_day2.csv')
-prev_loans = pd.read_csv(RAW_DIR / 'trainprevloans.csv')
+def load_data():
+    """Load master dataset and historical loans"""
+    print("=" * 70)
+    print("DAY 3: Feature Engineering")
+    print("=" * 70)
 
-# Steps 2-5 (condensed for brevity)
-date_cols = ['creationdate', 'approveddate', 'firstduedate', 'firstrepaiddate', 'closeddate']
-for col in date_cols:
-    prev_loans[col] = pd.to_datetime(prev_loans[col], errors='coerce')
-prev_loans['days_to_repay'] = (prev_loans['firstrepaiddate'] - prev_loans['firstduedate']).dt.days
+    print("\n📂 Loading data...")
 
-payment_features = []
-for customer_id, group in prev_loans.groupby('customerid'):
-    features = {'customerid': customer_id}
-    total = len(group)
-    features['hist_ontime_rate'] = (group['days_to_repay'] <= 0).sum() / total
-    features['hist_late_rate'] = (group['days_to_repay'] > 0).sum() / total
-    features['hist_never_paid_rate'] = group['days_to_repay'].isnull().sum() / total
-    late = group[group['days_to_repay'] > 0]['days_to_repay']
-    features['hist_avg_days_late'] = late.mean() if len(late) > 0 else 0
-    features['hist_max_days_late'] = group['days_to_repay'].max() if group['days_to_repay'].notna().any() else 0
-    features['hist_closure_rate'] = group['closeddate'].notna().sum() / total
-    recent = group['approveddate'].max()
-    features['days_since_last_loan'] = (pd.Timestamp('2024-07-01') - recent).days if pd.notna(recent) else 9999
-    payment_features.append(features)
+    master_df = pd.read_csv(PROCESSED_DATA_DIR / 'master_dataset_day2.csv')
+    print(f"   ✅ Master dataset: {master_df.shape}")
 
-payment_behavior_df = pd.DataFrame(payment_features)
-master_df = master_df.merge(payment_behavior_df, on='customerid', how='left')
+    historical_loans = pd.read_csv(RAW_DATA_DIR / 'trainprevloans.csv')
+    print(f"   ✅ Historical loans: {historical_loans.shape}\n")
 
-payment_cols = ['hist_ontime_rate', 'hist_late_rate', 'hist_never_paid_rate',
-                'hist_avg_days_late', 'hist_max_days_late', 'hist_closure_rate', 'days_since_last_loan']
-for col in payment_cols:
-    master_df[col] = master_df[col].fillna(9999 if col == 'days_since_last_loan' else 0)
+    return master_df, historical_loans
 
-print(f"✅ Payment features merged: {master_df.shape}\n")
 
-# --- NEW CODE BELOW ---
+def calculate_payment_behavior(historical_loans):
+    """Calculate payment behavior features"""
+    # Convert date columns
+    date_cols = ['approveddate', 'creationdate', 'closeddate', 'firstduedate', 'firstrepaiddate']
+    for col in date_cols:
+        if col in historical_loans.columns:
+            historical_loans[col] = pd.to_datetime(historical_loans[col], errors='coerce')
 
-print("="*80)
-print("STEP 6: Encode Categorical Variables")
-print("="*80)
+    # Calculate days to repay
+    historical_loans['days_to_repay'] = (
+        historical_loans['firstrepaiddate'] - historical_loans['firstduedate']
+    ).dt.days
 
-print("\n🔍 Categorical columns before encoding:")
-print(f"   • employment_status_clients: {master_df['employment_status_clients'].nunique()} unique values")
-print(f"   • level_of_education_clients: {master_df['level_of_education_clients'].nunique()} unique values")
+    # Categorize payment status
+    def categorize_payment(days):
+        if pd.isna(days):
+            return 'never_paid'
+        elif days <= 0:
+            return 'on_time'
+        else:
+            return 'late'
 
-print("\nValues:")
-print(f"   Employment: {master_df['employment_status_clients'].unique()}")
-print(f"   Education:  {master_df['level_of_education_clients'].unique()}")
+    historical_loans['payment_status'] = historical_loans['days_to_repay'].apply(categorize_payment)
 
-print(f"\n🔧 One-hot encoding categorical variables...")
+    return historical_loans
 
-# One-hot encode employment status
-master_df = pd.get_dummies(master_df, columns=['employment_status_clients'], prefix='emp', drop_first=False)
 
-# One-hot encode education level
-master_df = pd.get_dummies(master_df, columns=['level_of_education_clients'], prefix='edu', drop_first=False)
+# ============================================================================
+# CHUNK 2: Aggregate Payment Behavior Per Customer
+# ============================================================================
 
-print(f"\n✅ Categorical encoding complete!")
-print(f"   Dataset shape: {master_df.shape}")
+def aggregate_payment_features(historical_loans):
+    """Aggregate payment behavior per customer"""
+    print("=" * 70)
+    print("STEP 1: Aggregate Payment Behavior")
+    print("=" * 70)
 
-print(f"\n📊 New columns created:")
-emp_cols = [col for col in master_df.columns if col.startswith('emp_')]
-edu_cols = [col for col in master_df.columns if col.startswith('edu_')]
+    payment_counts = historical_loans.groupby(['customerid', 'payment_status']).size().unstack(fill_value=0)
+    payment_counts['total_loans'] = payment_counts.sum(axis=1)
 
-print(f"   Employment ({len(emp_cols)} columns): {emp_cols}")
-print(f"   Education ({len(edu_cols)} columns):  {edu_cols}")
+    payment_features = pd.DataFrame()
+    payment_features['customerid'] = payment_counts.index
 
-print(f"\n💡 What one-hot encoding does:")
-print("   Before: employment_status_clients = 'Permanent'")
-print("   After:  emp_Contract=0, emp_Permanent=1, emp_Self-Employed=0, emp_Temporary=0")
-print()
-print("   Each category becomes a binary column (0 or 1)")
-print("   Machine learning models need numbers, not text!")
+    if 'on_time' in payment_counts.columns:
+        payment_features['payment_ontime_rate'] = payment_counts['on_time'] / payment_counts['total_loans']
+    else:
+        payment_features['payment_ontime_rate'] = 0
+
+    if 'late' in payment_counts.columns:
+        payment_features['payment_late_rate'] = payment_counts['late'] / payment_counts['total_loans']
+    else:
+        payment_features['payment_late_rate'] = 0
+
+    if 'never_paid' in payment_counts.columns:
+        payment_features['payment_never_rate'] = payment_counts['never_paid'] / payment_counts['total_loans']
+    else:
+        payment_features['payment_never_rate'] = 0
+
+    late_payments = historical_loans[historical_loans['payment_status'] == 'late'].copy()
+
+    if len(late_payments) > 0:
+        avg_late = late_payments.groupby('customerid')['days_to_repay'].mean().reset_index()
+        avg_late.columns = ['customerid', 'avg_days_late']
+        max_late = late_payments.groupby('customerid')['days_to_repay'].max().reset_index()
+        max_late.columns = ['customerid', 'max_days_late']
+        payment_features = payment_features.merge(avg_late, on='customerid', how='left')
+        payment_features = payment_features.merge(max_late, on='customerid', how='left')
+    else:
+        payment_features['avg_days_late'] = 0
+        payment_features['max_days_late'] = 0
+
+    payment_features['avg_days_late'] = payment_features['avg_days_late'].fillna(0)
+    payment_features['max_days_late'] = payment_features['max_days_late'].fillna(0)
+
+    print(f"   ✅ Payment features: {len(payment_features):,} customers, 5 features\n")
+
+    return payment_features
+
+
+# ============================================================================
+# CHUNK 3: Create Loan Closure and Recency Features
+# ============================================================================
+
+def create_closure_and_recency_features(historical_loans):
+    """
+    Create loan closure and recency features
+
+    Features created:
+    - loan_closure_rate: % of loans that were closed (completed)
+    - loan_abandonment_rate: % of loans never closed (abandoned)
+    - days_since_last_loan: Days from most recent loan approval to today
+    - recency_category: 'recent' (<180 days), 'moderate' (180-365), 'old' (>365)
+    """
+    print("=" * 70)
+    print("STEP 2: Create Loan Closure & Recency Features")
+    print("=" * 70)
+
+    # Loan closure features
+    historical_loans['is_closed'] = historical_loans['closeddate'].notnull().astype(int)
+
+    closure_agg = historical_loans.groupby('customerid').agg({
+        'is_closed': ['sum', 'count']
+    }).reset_index()
+
+    closure_agg.columns = ['customerid', 'closed_loans', 'total_loans']
+    closure_agg['loan_closure_rate'] = closure_agg['closed_loans'] / closure_agg['total_loans']
+    closure_agg['loan_abandonment_rate'] = 1 - closure_agg['loan_closure_rate']
+
+    # Recency features
+    recency_agg = historical_loans.groupby('customerid')['approveddate'].max().reset_index()
+    recency_agg.columns = ['customerid', 'last_loan_date']
+
+    # Calculate days since last loan (from today)
+    today = pd.Timestamp.today()
+    recency_agg['days_since_last_loan'] = (today - recency_agg['last_loan_date']).dt.days
+
+    # Categorize recency
+    def categorize_recency(days):
+        if days < 180:
+            return 'recent'
+        elif days < 365:
+            return 'moderate'
+        else:
+            return 'old'
+
+    recency_agg['recency_category'] = recency_agg['days_since_last_loan'].apply(categorize_recency)
+
+    # Merge closure and recency
+    closure_features = closure_agg[['customerid', 'loan_closure_rate', 'loan_abandonment_rate']].copy()
+    closure_features = closure_features.merge(
+        recency_agg[['customerid', 'days_since_last_loan', 'recency_category']],
+        on='customerid'
+    )
+
+    print(f"\n✅ Closure & recency features created:")
+    print(f"   Customers: {len(closure_features):,}")
+    print(f"\n   Features created:")
+    print(f"      • loan_closure_rate")
+    print(f"      • loan_abandonment_rate")
+    print(f"      • days_since_last_loan")
+    print(f"      • recency_category")
+
+    print(f"\n📊 Recency breakdown:")
+    print(recency_agg['recency_category'].value_counts())
+
+    return closure_features
+
+
+if __name__ == "__main__":
+    master_df, historical_loans = load_data()
+    historical_loans = calculate_payment_behavior(historical_loans)
+    payment_features = aggregate_payment_features(historical_loans)
+    closure_features = create_closure_and_recency_features(historical_loans)
+
+    print("\n" + "=" * 70)
+    print("SAMPLE: Closure & Recency Features")
+    print("=" * 70)
+    print(closure_features.head())
 ```
 
-Save and run:
-
+**Run it:**
 ```bash
-python guide/week1/day3_practice.py
+python src/data/engineer_features.py
 ```
 
 **Expected output:**
-
 ```
-================================================================================
-STEP 6: Encode Categorical Variables
-================================================================================
+======================================================================
+STEP 2: Create Loan Closure & Recency Features
+======================================================================
 
-🔍 Categorical columns before encoding:
-   • employment_status_clients: 4 unique values
-   • level_of_education_clients: 4 unique values
+✅ Closure & recency features created:
+   Customers: 6,500
 
-Values:
-   Employment: ['Contract' 'Permanent' 'Self-Employed' 'Temporary']
-   Education:  ['HND/BSc' 'Secondary' 'PhD' 'Masters']
+   Features created:
+      • loan_closure_rate
+      • loan_abandonment_rate
+      • days_since_last_loan
+      • recency_category
 
-🔧 One-hot encoding categorical variables...
-
-✅ Categorical encoding complete!
-   Dataset shape: (5000, 32)
-
-📊 New columns created:
-   Employment (4 columns): ['emp_Contract', 'emp_Permanent', 'emp_Self-Employed', 'emp_Temporary']
-   Education (4 columns):  ['edu_HND/BSc', 'edu_Masters', 'edu_PhD', 'edu_Secondary']
-
-💡 What one-hot encoding does:
-   Before: employment_status_clients = 'Permanent'
-   After:  emp_Contract=0, emp_Permanent=1, emp_Self-Employed=0, emp_Temporary=0
-
-   Each category becomes a binary column (0 or 1)
-   Machine learning models need numbers, not text!
+📊 Recency breakdown:
+recent        2,500
+moderate      2,000
+old           2,000
 ```
-
-**What just happened:**
-
-- `pd.get_dummies(df, columns=['employment_status_clients'], prefix='emp', drop_first=False)` performs **one-hot encoding**.
-- **Before encoding:** `employment_status_clients` was a single column with text values like `'Permanent'`, `'Contract'`, etc.
-- **After encoding:** That one column becomes **4 binary columns**:
-  - `emp_Contract` = 1 if Contract, 0 otherwise
-  - `emp_Permanent` = 1 if Permanent, 0 otherwise
-  - `emp_Self-Employed` = 1 if Self-Employed, 0 otherwise
-  - `emp_Temporary` = 1 if Temporary, 0 otherwise
-
-- Same for education: 4 categories → 4 binary columns.
-
-- **Why this matters:** Machine learning algorithms require numeric input. Text categories must be converted to numbers. One-hot encoding is the standard method for categorical variables with no inherent order.
-
-- Original categorical columns are automatically dropped after encoding.
-
-- Dataset grew from 26 → 32 features (removed 2 text columns, added 8 binary columns = net +6).
 
 ---
 
+### Step 4: Chunk 4 - Create Demographic and Ratio Features
 
-### Step 7: Create Additional Derived Features
-
-Delete everything in `guide/week1/day3_practice.py` and replace it with this:
+**Delete everything in `src/data/engineer_features.py` and replace with this:**
 
 ```python
 """
-Day 3 Practice: Feature Engineering - Final version
+Day 3: Feature Engineering from Kaggle Credit Risk dataset
 """
-
 import pandas as pd
 import numpy as np
 from pathlib import Path
+from datetime import datetime
 
-pd.set_option('display.max_columns', None)
-pd.set_option('display.width', 200)
+# ============================================================================
+# PATHS
+# ============================================================================
 
-print("="*80)
-print("DAY 3: FEATURE ENGINEERING")
-print("="*80)
+BASE_DIR = Path(__file__).parent.parent.parent
+RAW_DATA_DIR = BASE_DIR / 'data' / 'raw'
+PROCESSED_DATA_DIR = BASE_DIR / 'data' / 'processed'
 
-PROCESSED_DIR = Path('credit-risk-api/data/processed')
-RAW_DIR = Path('credit-risk-api/data/raw')
+# ============================================================================
+# Helper Functions (Chunks 1-3)
+# ============================================================================
 
-master_df = pd.read_csv(PROCESSED_DIR / 'master_dataset_day2.csv')
-prev_loans = pd.read_csv(RAW_DIR / 'trainprevloans.csv')
+def load_data():
+    """Load master dataset and historical loans"""
+    print("=" * 70)
+    print("DAY 3: Feature Engineering")
+    print("=" * 70)
 
-# Steps 2-6 condensed
-date_cols = ['creationdate', 'approveddate', 'firstduedate', 'firstrepaiddate', 'closeddate']
-for col in date_cols:
-    prev_loans[col] = pd.to_datetime(prev_loans[col], errors='coerce')
-prev_loans['days_to_repay'] = (prev_loans['firstrepaiddate'] - prev_loans['firstduedate']).dt.days
+    print("\n📂 Loading data...")
 
-payment_features = []
-for customer_id, group in prev_loans.groupby('customerid'):
-    features = {'customerid': customer_id}
-    total = len(group)
-    features['hist_ontime_rate'] = (group['days_to_repay'] <= 0).sum() / total
-    features['hist_late_rate'] = (group['days_to_repay'] > 0).sum() / total
-    features['hist_never_paid_rate'] = group['days_to_repay'].isnull().sum() / total
-    late = group[group['days_to_repay'] > 0]['days_to_repay']
-    features['hist_avg_days_late'] = late.mean() if len(late) > 0 else 0
-    features['hist_max_days_late'] = group['days_to_repay'].max() if group['days_to_repay'].notna().any() else 0
-    features['hist_closure_rate'] = group['closeddate'].notna().sum() / total
-    recent = group['approveddate'].max()
-    features['days_since_last_loan'] = (pd.Timestamp('2024-07-01') - recent).days if pd.notna(recent) else 9999
-    payment_features.append(features)
+    master_df = pd.read_csv(PROCESSED_DATA_DIR / 'master_dataset_day2.csv')
+    historical_loans = pd.read_csv(RAW_DATA_DIR / 'trainprevloans.csv')
 
-payment_behavior_df = pd.DataFrame(payment_features)
-master_df = master_df.merge(payment_behavior_df, on='customerid', how='left')
+    print(f"   ✅ Master: {master_df.shape}, Historical: {historical_loans.shape}\n")
 
-payment_cols = ['hist_ontime_rate', 'hist_late_rate', 'hist_never_paid_rate',
-                'hist_avg_days_late', 'hist_max_days_late', 'hist_closure_rate', 'days_since_last_loan']
-for col in payment_cols:
-    master_df[col] = master_df[col].fillna(9999 if col == 'days_since_last_loan' else 0)
+    return master_df, historical_loans
 
-master_df = pd.get_dummies(master_df, columns=['employment_status_clients'], prefix='emp', drop_first=False)
-master_df = pd.get_dummies(master_df, columns=['level_of_education_clients'], prefix='edu', drop_first=False)
 
-print(f"✅ Steps 2-6 complete: {master_df.shape}\n")
+def calculate_payment_behavior(historical_loans):
+    """Calculate payment behavior"""
+    date_cols = ['approveddate', 'creationdate', 'closeddate', 'firstduedate', 'firstrepaiddate']
+    for col in date_cols:
+        if col in historical_loans.columns:
+            historical_loans[col] = pd.to_datetime(historical_loans[col], errors='coerce')
 
-# --- NEW CODE BELOW ---
+    historical_loans['days_to_repay'] = (
+        historical_loans['firstrepaiddate'] - historical_loans['firstduedate']
+    ).dt.days
 
-print("="*80)
-print("STEP 7: Create Additional Derived Features")
-print("="*80)
+    def categorize_payment(days):
+        if pd.isna(days):
+            return 'never_paid'
+        elif days <= 0:
+            return 'on_time'
+        else:
+            return 'late'
 
-print("\n🔧 Creating derived features from existing columns...")
+    historical_loans['payment_status'] = historical_loans['days_to_repay'].apply(categorize_payment)
+    return historical_loans
 
-# 1. Loan amount relative to historical average
-master_df['loan_to_hist_avg'] = master_df['loanamount'] / (master_df['avg_loan_amount'] + 1)  # +1 to avoid division by zero
 
-# 2. Interest rate (implied from totaldue vs loanamount)
-master_df['interest_rate'] = (master_df['totaldue'] / master_df['loanamount']) - 1
+def aggregate_payment_features(historical_loans):
+    """Aggregate payment features"""
+    payment_counts = historical_loans.groupby(['customerid', 'payment_status']).size().unstack(fill_value=0)
+    payment_counts['total_loans'] = payment_counts.sum(axis=1)
 
-# 3. Loan amount increase (current loan vs historical average)
-master_df['loan_amount_increase'] = master_df['loanamount'] - master_df['avg_loan_amount']
+    payment_features = pd.DataFrame()
+    payment_features['customerid'] = payment_counts.index
 
-print(f"✅ Created 3 derived features")
+    if 'on_time' in payment_counts.columns:
+        payment_features['payment_ontime_rate'] = payment_counts['on_time'] / payment_counts['total_loans']
+    else:
+        payment_features['payment_ontime_rate'] = 0
 
-print(f"\n📊 New features:")
-print("   1. loan_to_hist_avg:      Current loan / avg historical loan")
-print("                             (>1 means borrowing more than usual)")
-print()
-print("   2. interest_rate:         (totaldue / loanamount) - 1")
-print("                             (higher rate = riskier loan)")
-print()
-print("   3. loan_amount_increase:  Current loan - avg historical loan")
-print("                             (large increase may indicate financial stress)")
+    if 'late' in payment_counts.columns:
+        payment_features['payment_late_rate'] = payment_counts['late'] / payment_counts['total_loans']
+    else:
+        payment_features['payment_late_rate'] = 0
 
-print(f"\nDataset shape: {master_df.shape}")
-print(f"Total features: {master_df.shape[1]}")
+    if 'never_paid' in payment_counts.columns:
+        payment_features['payment_never_rate'] = payment_counts['never_paid'] / payment_counts['total_loans']
+    else:
+        payment_features['payment_never_rate'] = 0
 
-print(f"\n👀 Sample values:")
-sample = master_df[['loanamount', 'avg_loan_amount', 'loan_to_hist_avg', 
-                    'totaldue', 'interest_rate', 'loan_amount_increase']].head(5)
-print(sample)
+    late_payments = historical_loans[historical_loans['payment_status'] == 'late'].copy()
+
+    if len(late_payments) > 0:
+        avg_late = late_payments.groupby('customerid')['days_to_repay'].mean().reset_index()
+        avg_late.columns = ['customerid', 'avg_days_late']
+        max_late = late_payments.groupby('customerid')['days_to_repay'].max().reset_index()
+        max_late.columns = ['customerid', 'max_days_late']
+        payment_features = payment_features.merge(avg_late, on='customerid', how='left')
+        payment_features = payment_features.merge(max_late, on='customerid', how='left')
+    else:
+        payment_features['avg_days_late'] = 0
+        payment_features['max_days_late'] = 0
+
+    payment_features['avg_days_late'] = payment_features['avg_days_late'].fillna(0)
+    payment_features['max_days_late'] = payment_features['max_days_late'].fillna(0)
+
+    return payment_features
+
+
+def create_closure_and_recency_features(historical_loans):
+    """Create closure and recency features"""
+    historical_loans['is_closed'] = historical_loans['closeddate'].notnull().astype(int)
+
+    closure_agg = historical_loans.groupby('customerid').agg({
+        'is_closed': ['sum', 'count']
+    }).reset_index()
+
+    closure_agg.columns = ['customerid', 'closed_loans', 'total_loans']
+    closure_agg['loan_closure_rate'] = closure_agg['closed_loans'] / closure_agg['total_loans']
+    closure_agg['loan_abandonment_rate'] = 1 - closure_agg['loan_closure_rate']
+
+    recency_agg = historical_loans.groupby('customerid')['approveddate'].max().reset_index()
+    recency_agg.columns = ['customerid', 'last_loan_date']
+
+    today = pd.Timestamp.today()
+    recency_agg['days_since_last_loan'] = (today - recency_agg['last_loan_date']).dt.days
+
+    def categorize_recency(days):
+        if days < 180:
+            return 'recent'
+        elif days < 365:
+            return 'moderate'
+        else:
+            return 'old'
+
+    recency_agg['recency_category'] = recency_agg['days_since_last_loan'].apply(categorize_recency)
+
+    closure_features = closure_agg[['customerid', 'loan_closure_rate', 'loan_abandonment_rate']].copy()
+    closure_features = closure_features.merge(
+        recency_agg[['customerid', 'days_since_last_loan', 'recency_category']],
+        on='customerid'
+    )
+
+    return closure_features
+
+
+# ============================================================================
+# CHUNK 4: Create Demographic and Ratio Features
+# ============================================================================
+
+def create_demographic_and_ratio_features(master_df):
+    """
+    Create demographic and ratio features from master dataset
+
+    Features created:
+    - age: Calculated from birthdate
+    - age_group: Categorical age buckets
+    - current_to_avg_loan_ratio: Current loan / average historical loan
+    - current_to_max_loan_ratio: Current loan / max historical loan
+    """
+    print("\n" + "=" * 70)
+    print("STEP 3: Create Demographic & Ratio Features")
+    print("=" * 70)
+
+    df = master_df.copy()
+
+    # Age from birthdate
+    if 'birthdate' in df.columns:
+        df['birthdate'] = pd.to_datetime(df['birthdate'], errors='coerce')
+        today = pd.Timestamp.today()
+        df['age'] = ((today - df['birthdate']).dt.days / 365.25).astype(int)
+
+        # Age groups
+        def categorize_age(age):
+            if pd.isna(age) or age < 18:
+                return 'unknown'
+            elif age < 25:
+                return '18-24'
+            elif age < 35:
+                return '25-34'
+            elif age < 45:
+                return '35-44'
+            elif age < 55:
+                return '45-54'
+            else:
+                return '55+'
+
+        df['age_group'] = df['age'].apply(categorize_age)
+
+        print(f"\n✅ Age features created")
+        print(f"   Age range: {df['age'].min():.0f} - {df['age'].max():.0f} years")
+        print(f"\n📊 Age group distribution:")
+        print(df['age_group'].value_counts().sort_index())
+
+    # Loan ratios (current loan vs historical)
+    if 'loanamount' in df.columns and 'hist_avg_loan_amount' in df.columns:
+        df['current_to_avg_loan_ratio'] = df['loanamount'] / (df['hist_avg_loan_amount'] + 1)  # +1 to avoid division by zero
+
+        if 'hist_max_loan_amount' in df.columns:
+            df['current_to_max_loan_ratio'] = df['loanamount'] / (df['hist_max_loan_amount'] + 1)
+
+        print(f"\n✅ Loan ratio features created")
+
+    print(f"\n✅ Total demographic & ratio features created: 4")
+
+    return df
+
+
+if __name__ == "__main__":
+    # Load and process
+    master_df, historical_loans = load_data()
+    historical_loans = calculate_payment_behavior(historical_loans)
+
+    print("=" * 70)
+    print("STEP 1: Aggregate Payment Features")
+    print("=" * 70)
+    payment_features = aggregate_payment_features(historical_loans)
+    print(f"   ✅ Payment features: {len(payment_features):,} customers\n")
+
+    print("=" * 70)
+    print("STEP 2: Create Closure & Recency Features")
+    print("=" * 70)
+    closure_features = create_closure_and_recency_features(historical_loans)
+    print(f"   ✅ Closure features: {len(closure_features):,} customers\n")
+
+    # Create demographic features
+    master_df = create_demographic_and_ratio_features(master_df)
+
+    print("\n" + "=" * 70)
+    print("PROGRESS CHECK")
+    print("=" * 70)
+    print(f"✅ Master dataset: {master_df.shape}")
+    print(f"✅ Payment features ready: {len(payment_features):,} customers")
+    print(f"✅ Closure features ready: {len(closure_features):,} customers")
 ```
 
-Save and run:
-
+**Run it:**
 ```bash
-python guide/week1/day3_practice.py
+python src/data/engineer_features.py
 ```
 
 **Expected output:**
-
 ```
-================================================================================
-STEP 7: Create Additional Derived Features
-================================================================================
+======================================================================
+STEP 3: Create Demographic & Ratio Features
+======================================================================
 
-🔧 Creating derived features from existing columns...
-✅ Created 3 derived features
+✅ Age features created
+   Age range: 21 - 68 years
 
-📊 New features:
-   1. loan_to_hist_avg:      Current loan / avg historical loan
-                             (>1 means borrowing more than usual)
+📊 Age group distribution:
+18-24      500
+25-34    2,500
+35-44    3,000
+45-54    1,500
+55+        500
 
-   2. interest_rate:         (totaldue / loanamount) - 1
-                             (higher rate = riskier loan)
+✅ Loan ratio features created
 
-   3. loan_amount_increase:  Current loan - avg historical loan
-                             (large increase may indicate financial stress)
-
-Dataset shape: (5000, 35)
-Total features: 35
-
-👀 Sample values:
-   loanamount  avg_loan_amount  loan_to_hist_avg   totaldue  interest_rate  loan_amount_increase
-0       73564         49397.12          1.488965      98974       0.345231              24166.88
-1       28946         36354.60          0.796278      36276       0.253213              -7408.60
-2       44231         25530.00          1.732481      55623       0.257563              18701.00
-3       39029         44968.00          0.867936      49891       0.278342              -5939.00
-4      118950         57566.33          2.066190     153544       0.290669              61383.67
+✅ Total demographic & ratio features created: 4
 ```
-
-**What just happened:**
-
-- Created 3 **derived features** by combining existing columns:
-
-1. **loan_to_hist_avg**: Ratio of current loan to historical average
-   - Customer 0: 1.49 (borrowing 49% more than usual)
-   - Customer 4: 2.07 (borrowing TWICE their usual amount - red flag!)
-   - Values >1 suggest the customer is taking a larger loan than normal, which may indicate financial stress
-
-2. **interest_rate**: Implied interest rate from loan terms
-   - Calculated as (total due / principal) - 1
-   - Customer 0: 34.5% interest rate
-   - Higher rates are typically charged to riskier borrowers
-
-3. **loan_amount_increase**: Absolute increase vs historical average
-   - Customer 0: +₦24,167 (borrowing ₦24k more)
-   - Customer 4: +₦61,384 (large increase - may be risky)
-   - Large increases relative to history can signal over-leveraging
-
-- These "interaction features" capture relationships between columns that may be predictive.
-- Adding 1 to `avg_loan_amount` prevents division by zero for first-time borrowers.
-- Final dataset: **35 features** (up from 19 at the start of today).
 
 ---
 
-### Step 8: Save Enriched Dataset
+### Step 5: Chunk 5 - Merge All Features and Save
 
-Delete everything in `guide/week1/day3_practice.py` and replace it with this (final complete version):
+**Delete everything in `src/data/engineer_features.py` and replace with the final complete version:**
 
 ```python
 """
-Day 3 Practice: Feature Engineering from Historical Loans
-Credit Risk Scoring System - COMPLETE VERSION
-
-This is the final version. Run this after day2_practice.py
+Day 3: Feature Engineering from Kaggle Credit Risk dataset
 """
-
 import pandas as pd
 import numpy as np
 from pathlib import Path
+from datetime import datetime
 
-pd.set_option('display.max_columns', None)
-pd.set_option('display.width', 200)
+# ============================================================================
+# PATHS
+# ============================================================================
 
-print("="*80)
-print("DAY 3: FEATURE ENGINEERING FROM HISTORICAL LOANS")
-print("="*80)
+BASE_DIR = Path(__file__).parent.parent.parent
+RAW_DATA_DIR = BASE_DIR / 'data' / 'raw'
+PROCESSED_DATA_DIR = BASE_DIR / 'data' / 'processed'
 
-# Load data
-PROCESSED_DIR = Path('credit-risk-api/data/processed')
-RAW_DIR = Path('credit-risk-api/data/raw')
+# ============================================================================
+# DATA LOADING
+# ============================================================================
 
-master_df = pd.read_csv(PROCESSED_DIR / 'master_dataset_day2.csv')
-prev_loans = pd.read_csv(RAW_DIR / 'trainprevloans.csv')
+def load_data():
+    """Load master dataset and historical loans"""
+    print("=" * 70)
+    print("DAY 3: Feature Engineering")
+    print("=" * 70)
 
-print(f"📂 Loaded: master_df {master_df.shape}, prev_loans {prev_loans.shape}")
+    print("\n📂 Loading data...")
 
-# Step 2: Convert dates
-date_cols = ['creationdate', 'approveddate', 'firstduedate', 'firstrepaiddate', 'closeddate']
-for col in date_cols:
-    prev_loans[col] = pd.to_datetime(prev_loans[col], errors='coerce')
+    master_df = pd.read_csv(PROCESSED_DATA_DIR / 'master_dataset_day2.csv')
+    historical_loans = pd.read_csv(RAW_DATA_DIR / 'trainprevloans.csv')
 
-# Step 3: Calculate days to repayment
-prev_loans['days_to_repay'] = (prev_loans['firstrepaiddate'] - prev_loans['firstduedate']).dt.days
-print("✅ Step 3: Calculated days_to_repay")
+    print(f"   ✅ Master: {master_df.shape}, Historical: {historical_loans.shape}\n")
 
-# Step 4: Aggregate payment behavior
-payment_features = []
-for customer_id, group in prev_loans.groupby('customerid'):
-    features = {'customerid': customer_id}
-    total = len(group)
-    features['hist_ontime_rate'] = (group['days_to_repay'] <= 0).sum() / total
-    features['hist_late_rate'] = (group['days_to_repay'] > 0).sum() / total
-    features['hist_never_paid_rate'] = group['days_to_repay'].isnull().sum() / total
-    late = group[group['days_to_repay'] > 0]['days_to_repay']
-    features['hist_avg_days_late'] = late.mean() if len(late) > 0 else 0
-    features['hist_max_days_late'] = group['days_to_repay'].max() if group['days_to_repay'].notna().any() else 0
-    features['hist_closure_rate'] = group['closeddate'].notna().sum() / total
-    recent = group['approveddate'].max()
-    features['days_since_last_loan'] = (pd.Timestamp('2024-07-01') - recent).days if pd.notna(recent) else 9999
-    payment_features.append(features)
+    return master_df, historical_loans
 
-payment_behavior_df = pd.DataFrame(payment_features)
-print(f"✅ Step 4: Aggregated payment behavior → {payment_behavior_df.shape}")
+# ============================================================================
+# PAYMENT BEHAVIOR FEATURES
+# ============================================================================
 
-# Step 5: Merge and fill missing
-master_df = master_df.merge(payment_behavior_df, on='customerid', how='left')
-payment_cols = ['hist_ontime_rate', 'hist_late_rate', 'hist_never_paid_rate',
-                'hist_avg_days_late', 'hist_max_days_late', 'hist_closure_rate', 'days_since_last_loan']
-for col in payment_cols:
-    master_df[col] = master_df[col].fillna(9999 if col == 'days_since_last_loan' else 0)
-print(f"✅ Step 5: Merged payment features → {master_df.shape}")
+def calculate_payment_behavior(historical_loans):
+    """Calculate payment behavior from dates"""
+    date_cols = ['approveddate', 'creationdate', 'closeddate', 'firstduedate', 'firstrepaiddate']
+    for col in date_cols:
+        if col in historical_loans.columns:
+            historical_loans[col] = pd.to_datetime(historical_loans[col], errors='coerce')
 
-# Step 6: Encode categoricals
-master_df = pd.get_dummies(master_df, columns=['employment_status_clients'], prefix='emp', drop_first=False)
-master_df = pd.get_dummies(master_df, columns=['level_of_education_clients'], prefix='edu', drop_first=False)
-print(f"✅ Step 6: Encoded categorical variables → {master_df.shape}")
+    historical_loans['days_to_repay'] = (
+        historical_loans['firstrepaiddate'] - historical_loans['firstduedate']
+    ).dt.days
 
-# Step 7: Derived features
-master_df['loan_to_hist_avg'] = master_df['loanamount'] / (master_df['avg_loan_amount'] + 1)
-master_df['interest_rate'] = (master_df['totaldue'] / master_df['loanamount']) - 1
-master_df['loan_amount_increase'] = master_df['loanamount'] - master_df['avg_loan_amount']
-print(f"✅ Step 7: Created derived features → {master_df.shape}")
+    def categorize_payment(days):
+        if pd.isna(days):
+            return 'never_paid'
+        elif days <= 0:
+            return 'on_time'
+        else:
+            return 'late'
 
-# Step 8: Save
-print("\n" + "="*80)
-print("STEP 8: Saving Enriched Dataset")
-print("="*80)
+    historical_loans['payment_status'] = historical_loans['days_to_repay'].apply(categorize_payment)
+    return historical_loans
 
-output_path = PROCESSED_DIR / 'master_dataset_day3.csv'
-master_df.to_csv(output_path, index=False)
 
-print(f"\n💾 Saved to: {output_path}")
-print(f"   Shape: {master_df.shape}")
-print(f"   Size: {output_path.stat().st_size / 1024:.1f} KB")
+def aggregate_payment_features(historical_loans):
+    """Aggregate payment features per customer"""
+    payment_counts = historical_loans.groupby(['customerid', 'payment_status']).size().unstack(fill_value=0)
+    payment_counts['total_loans'] = payment_counts.sum(axis=1)
 
-# Summary
-print("\n" + "="*80)
-print("📝 DAY 3 SUMMARY")
-print("="*80)
+    payment_features = pd.DataFrame()
+    payment_features['customerid'] = payment_counts.index
 
-print(f"""
-✅ Feature Engineering Complete!
+    if 'on_time' in payment_counts.columns:
+        payment_features['payment_ontime_rate'] = payment_counts['on_time'] / payment_counts['total_loans']
+    else:
+        payment_features['payment_ontime_rate'] = 0
 
-📊 Dataset Growth:
-   Day 2 features: 19
-   Day 3 features: {master_df.shape[1]}
-   New features:   {master_df.shape[1] - 19}
+    if 'late' in payment_counts.columns:
+        payment_features['payment_late_rate'] = payment_counts['late'] / payment_counts['total_loans']
+    else:
+        payment_features['payment_late_rate'] = 0
 
-🎯 Features Added:
-   1. Payment Behavior (7):
-      • hist_ontime_rate, hist_late_rate, hist_never_paid_rate
-      • hist_avg_days_late, hist_max_days_late
-      • hist_closure_rate, days_since_last_loan
+    if 'never_paid' in payment_counts.columns:
+        payment_features['payment_never_rate'] = payment_counts['never_paid'] / payment_counts['total_loans']
+    else:
+        payment_features['payment_never_rate'] = 0
 
-   2. Categorical Encoding (8):
-      • Employment: 4 binary columns
-      • Education: 4 binary columns
+    late_payments = historical_loans[historical_loans['payment_status'] == 'late'].copy()
 
-   3. Derived Features (3):
-      • loan_to_hist_avg, interest_rate, loan_amount_increase
+    if len(late_payments) > 0:
+        avg_late = late_payments.groupby('customerid')['days_to_repay'].mean().reset_index()
+        avg_late.columns = ['customerid', 'avg_days_late']
+        max_late = late_payments.groupby('customerid')['days_to_repay'].max().reset_index()
+        max_late.columns = ['customerid', 'max_days_late']
+        payment_features = payment_features.merge(avg_late, on='customerid', how='left')
+        payment_features = payment_features.merge(max_late, on='customerid', how='left')
+    else:
+        payment_features['avg_days_late'] = 0
+        payment_features['max_days_late'] = 0
 
-💡 Why These Features Matter:
-   • Payment behavior is the #1 predictor of credit risk
-   • hist_ontime_rate: Past behavior predicts future behavior
-   • hist_closure_rate: Completing loans shows reliability
-   • days_since_last_loan: Recent borrowing may signal stress
+    payment_features['avg_days_late'] = payment_features['avg_days_late'].fillna(0)
+    payment_features['max_days_late'] = payment_features['max_days_late'].fillna(0)
 
-📅 Tomorrow (Day 4):
-   • Deep EDA: Correlation analysis
-   • Identify top 10 predictive features
-   • Detect and handle outliers
-   • Visualize feature distributions
+    return payment_features
 
-🎉 DAY 3 COMPLETE! {master_df.shape[1]} features ready for analysis!
-""")
+# ============================================================================
+# CLOSURE AND RECENCY FEATURES
+# ============================================================================
 
-print("\n🔍 Feature List:")
-for i, col in enumerate(master_df.columns, 1):
-    print(f"   {i:2d}. {col}")
+def create_closure_and_recency_features(historical_loans):
+    """Create closure and recency features"""
+    historical_loans['is_closed'] = historical_loans['closeddate'].notnull().astype(int)
+
+    closure_agg = historical_loans.groupby('customerid').agg({
+        'is_closed': ['sum', 'count']
+    }).reset_index()
+
+    closure_agg.columns = ['customerid', 'closed_loans', 'total_loans']
+    closure_agg['loan_closure_rate'] = closure_agg['closed_loans'] / closure_agg['total_loans']
+    closure_agg['loan_abandonment_rate'] = 1 - closure_agg['loan_closure_rate']
+
+    recency_agg = historical_loans.groupby('customerid')['approveddate'].max().reset_index()
+    recency_agg.columns = ['customerid', 'last_loan_date']
+
+    today = pd.Timestamp.today()
+    recency_agg['days_since_last_loan'] = (today - recency_agg['last_loan_date']).dt.days
+
+    def categorize_recency(days):
+        if days < 180:
+            return 'recent'
+        elif days < 365:
+            return 'moderate'
+        else:
+            return 'old'
+
+    recency_agg['recency_category'] = recency_agg['days_since_last_loan'].apply(categorize_recency)
+
+    closure_features = closure_agg[['customerid', 'loan_closure_rate', 'loan_abandonment_rate']].copy()
+    closure_features = closure_features.merge(
+        recency_agg[['customerid', 'days_since_last_loan', 'recency_category']],
+        on='customerid'
+    )
+
+    return closure_features
+
+# ============================================================================
+# DEMOGRAPHIC AND RATIO FEATURES
+# ============================================================================
+
+def create_demographic_and_ratio_features(master_df):
+    """Create demographic and ratio features"""
+    df = master_df.copy()
+
+    # Age from birthdate
+    if 'birthdate' in df.columns:
+        df['birthdate'] = pd.to_datetime(df['birthdate'], errors='coerce')
+        today = pd.Timestamp.today()
+        df['age'] = ((today - df['birthdate']).dt.days / 365.25).astype(int)
+
+        def categorize_age(age):
+            if pd.isna(age) or age < 18:
+                return 'unknown'
+            elif age < 25:
+                return '18-24'
+            elif age < 35:
+                return '25-34'
+            elif age < 45:
+                return '35-44'
+            elif age < 55:
+                return '45-54'
+            else:
+                return '55+'
+
+        df['age_group'] = df['age'].apply(categorize_age)
+
+    # Loan ratios
+    if 'loanamount' in df.columns and 'hist_avg_loan_amount' in df.columns:
+        df['current_to_avg_loan_ratio'] = df['loanamount'] / (df['hist_avg_loan_amount'] + 1)
+
+        if 'hist_max_loan_amount' in df.columns:
+            df['current_to_max_loan_ratio'] = df['loanamount'] / (df['hist_max_loan_amount'] + 1)
+
+    return df
+
+# ============================================================================
+# MERGE AND SAVE
+# ============================================================================
+
+def merge_all_features_and_save(master_df, payment_features, closure_features):
+    """Merge all engineered features and save final dataset"""
+    print("\n" + "=" * 70)
+    print("STEP 4: Merge All Features & Save")
+    print("=" * 70)
+
+    print(f"\n📊 Before merge:")
+    print(f"   Master dataset: {master_df.shape}")
+    print(f"   Payment features: {payment_features.shape}")
+    print(f"   Closure features: {closure_features.shape}")
+
+    # Merge payment features
+    final_df = master_df.merge(payment_features, on='customerid', how='left')
+
+    # Merge closure features
+    final_df = final_df.merge(closure_features, on='customerid', how='left')
+
+    # Fill missing values for customers without history
+    new_cols = list(payment_features.columns) + list(closure_features.columns)
+    new_cols = [col for col in new_cols if col != 'customerid']
+
+    for col in new_cols:
+        if col in final_df.columns:
+            if final_df[col].dtype in ['float64', 'int64']:
+                final_df[col] = final_df[col].fillna(0)
+            else:
+                final_df[col] = final_df[col].fillna('unknown')
+
+    print(f"\n✅ After merge:")
+    print(f"   Final dataset: {final_df.shape}")
+    print(f"   New features added: {final_df.shape[1] - master_df.shape[1]}")
+
+    # Save
+    output_path = PROCESSED_DATA_DIR / 'master_dataset_day3.csv'
+    final_df.to_csv(output_path, index=False)
+
+    print(f"\n✅ Saved: {output_path}")
+    print(f"   Size: {output_path.stat().st_size / 1024**2:.2f} MB")
+
+    return final_df
+
+# ============================================================================
+# MAIN
+# ============================================================================
+
+if __name__ == "__main__":
+    # Load data
+    master_df, historical_loans = load_data()
+
+    # Step 1: Payment behavior features
+    print("=" * 70)
+    print("STEP 1: Create Payment Behavior Features")
+    print("=" * 70)
+    historical_loans = calculate_payment_behavior(historical_loans)
+    payment_features = aggregate_payment_features(historical_loans)
+    print(f"\n✅ Payment features: {payment_features.shape}")
+
+    # Step 2: Closure and recency features
+    print("\n" + "=" * 70)
+    print("STEP 2: Create Closure & Recency Features")
+    print("=" * 70)
+    closure_features = create_closure_and_recency_features(historical_loans)
+    print(f"\n✅ Closure features: {closure_features.shape}")
+
+    # Step 3: Demographic and ratio features
+    print("\n" + "=" * 70)
+    print("STEP 3: Create Demographic & Ratio Features")
+    print("=" * 70)
+    master_df = create_demographic_and_ratio_features(master_df)
+    print(f"\n✅ Master dataset with demographics: {master_df.shape}")
+
+    # Step 4: Merge and save
+    final_df = merge_all_features_and_save(master_df, payment_features, closure_features)
+
+    # Final summary
+    print("\n" + "=" * 70)
+    print("🎉 DAY 3 COMPLETE!")
+    print("=" * 70)
+    print(f"✅ Engineered dataset: {final_df.shape[0]:,} rows × {final_df.shape[1]} features")
+    print(f"✅ Saved to: data/processed/master_dataset_day3.csv")
+    print(f"\n📊 Feature categories added:")
+    print(f"   • Payment behavior: 5 features")
+    print(f"   • Loan closure: 2 features")
+    print(f"   • Recency: 2 features")
+    print(f"   • Demographics: 2 features")
+    print(f"   • Loan ratios: 2 features")
+    print(f"   Total new features: 13")
+    print(f"\n🎯 Next: Day 4 - EDA & Outlier Detection")
 ```
 
-Save and run:
-
+**Run the final version:**
 ```bash
-python guide/week1/day3_practice.py
+python src/data/engineer_features.py
 ```
 
-This is your final complete Day 3 script. Keep this version.
+**Expected output:**
+```
+======================================================================
+STEP 4: Merge All Features & Save
+======================================================================
 
----
+📊 Before merge:
+   Master dataset: (8000, 36)
+   Payment features: (6500, 6)
+   Closure features: (6500, 5)
 
-## Part 3: Key Concepts Summary
+✅ After merge:
+   Final dataset: (8000, 45)
+   New features added: 9
 
-| Operation | What It Does |
-|-----------|-------------|
-| `pd.to_datetime(col, errors='coerce')` | Convert text dates to datetime objects; invalid → NaT |
-| `(date1 - date2).dt.days` | Subtract dates to get days between them |
-| `.groupby('col')` | Group rows by column value for aggregation |
-| `(condition).sum() / total` | Calculate rate/fraction (0-1) |
-| `.fillna(value)` | Replace missing values with specified value |
-| `pd.get_dummies(df, columns=['col'], prefix='pre')` | One-hot encode categorical variable |
-| `df1.merge(df2, on='key', how='left')` | Left join keeping all rows from df1 |
+✅ Saved: data/processed/master_dataset_day3.csv
+   Size: 3.12 MB
 
----
+======================================================================
+🎉 DAY 3 COMPLETE!
+======================================================================
+✅ Engineered dataset: 8,000 rows × 45 features
+✅ Saved to: data/processed/master_dataset_day3.csv
 
-## Part 4: Commit Your Work
+📊 Feature categories added:
+   • Payment behavior: 5 features
+   • Loan closure: 2 features
+   • Recency: 2 features
+   • Demographics: 2 features
+   • Loan ratios: 2 features
+   Total new features: 13
 
-```bash
-git add guide/week1/day3_practice.py credit-risk-api/data/processed/master_dataset_day3.csv
-git commit -m "Day 3: Feature engineering (payment behavior, categorical encoding, derived features)"
+🎯 Next: Day 4 - EDA & Outlier Detection
 ```
 
 ---
 
-## Common Errors
+## ✅ Day 3 Checklist
 
-| Problem | Solution |
-|---------|----------|
-| `KeyError: 'firstduedate'` | Dates must be converted BEFORE calculating days_to_repay |
-| Division by zero in derived features | Add +1 to denominator: `x / (y + 1)` |
-| `.groupby()` returns wrong shape | Check if you're aggregating correctly; use `.reset_index()` |
-| One-hot encoding creates too many columns | Check `drop_first=False` parameter; typically keep all categories |
-| `TypeError: unsupported operand type(s) for -` | Dates must be datetime objects, not strings |
+Before moving to Day 4, verify:
 
----
-
-## Check Your Understanding
-
-**1. Why is `days_to_repay` calculated as `firstrepaiddate - firstduedate` and not the other way around?**
-
-The order matters because it determines the sign. `firstrepaiddate - firstduedate` gives:
-- Negative if paid early (repaid before due)
-- Zero if paid on time
-- Positive if paid late (repaid after due)
-
-If reversed (`firstduedate - firstrepaiddate`), the signs would flip, which would be confusing. The current order makes intuitive sense: positive numbers = late = bad.
-
-**2. Why do we fill missing payment features with 0 instead of the median or mean?**
-
-Missing payment features occur for customers with NO loan history (first-time borrowers). For them:
-- `hist_ontime_rate = 0` means "zero on-time payments" (because they have zero loans)
-- `hist_late_rate = 0` means "zero late payments"
-- This is factually correct, not an imputation
-
-Using median/mean would be wrong because it would assign those customers the "average" payment behavior of OTHER customers, which they haven't demonstrated. Zero accurately represents "no history."
-
-**3. What is one-hot encoding and why is it necessary?**
-
-One-hot encoding converts categorical variables (text) into binary (0/1) columns. For example, `employment_status = 'Permanent'` becomes four columns: `emp_Contract=0, emp_Permanent=1, emp_Self-Employed=0, emp_Temporary=0`.
-
-It's necessary because machine learning algorithms require numeric input. They cannot process text strings directly. One-hot encoding preserves the categorical nature without imposing an artificial order (unlike label encoding which would assign Permanent=0, Contract=1, etc., implying Contract > Permanent).
+- [ ] Script runs without errors: `python src/data/engineer_features.py`
+- [ ] Output file exists: `data/processed/master_dataset_day3.csv`
+- [ ] Dataset has ~8,000 rows and ~45 features
+- [ ] Payment behavior features present (ontime_rate, late_rate, never_rate, avg_days_late, max_days_late)
+- [ ] Closure features present (closure_rate, abandonment_rate, days_since_last_loan)
+- [ ] Demographic features present (age, age_group)
 
 ---
 
-## What You Built Today
+## 🎯 What's Next?
 
-| Item | File | Purpose |
-|------|------|---------|
-| Practice script | `guide/week1/day3_practice.py` | Complete feature engineering pipeline |
-| Enriched dataset | `credit-risk-api/data/processed/master_dataset_day3.csv` | 35 features ready for EDA |
-
-**New pandas operations learned:**
-`pd.to_datetime()`, `.dt.days`, `.groupby()` with custom aggregation, `pd.get_dummies()`, `.fillna()`
-
-**New features created:** 16 (7 payment behavior + 8 categorical + 3 derived)
-
-**Tomorrow (Day 4):** Deep EDA with correlation analysis, outlier detection, and visualizations to identify which of your 35 features are most predictive.
+**Day 4**: EDA & Outlier Detection
+- Correlation analysis with target variable
+- Identify top 10-15 most predictive features
+- Detect outliers using IQR method
+- Handle outliers through capping
+- Create visualizations (heatmaps, distributions)
+- Output: `data/processed/master_dataset_day4.csv`
 
 ---
 
-**🎉 DAY 3 COMPLETE!**
+## 📚 Key Concepts Learned
 
+1. **Feature Engineering**: Transforming raw data into predictive features
+2. **Payment Behavior**: On-time/late/never-paid rates are powerful predictors
+3. **Loan Closure**: Completion vs abandonment shows loan commitment
+4. **Recency**: Recent borrowing activity indicates current financial state
+5. **Ratios**: Comparing current loan to historical averages reveals risk
+6. **Age Calculation**: Converting dates to meaningful numeric features
+
+**Time to complete**: ~60 minutes
+**Files created**: 1 (src/data/engineer_features.py) + 1 output (master_dataset_day3.csv)
