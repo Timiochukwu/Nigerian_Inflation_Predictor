@@ -1,6 +1,6 @@
 # 🏦 Credit Risk Scoring API - Complete Guide
 
-**A comprehensive 20-day guide to building a production-ready credit risk prediction API**
+**A comprehensive 15-day guide to building a production-ready credit risk prediction API**
 
 ---
 
@@ -52,7 +52,7 @@ Place files in: `credit-risk-api/data/raw/`
 
 ---
 
-## 📚 Guide Structure (20 Days)
+## 📚 Guide Structure (15 Days)
 
 ### 🔵 **Week 1: Data Preparation** (Days 1-5)
 
@@ -72,58 +72,40 @@ Place files in: `credit-risk-api/data/raw/`
 
 ---
 
-### 🟢 **Week 2: Baseline Models** (Days 6-10)
+### 🟢 **Week 2: ML Model Training** (Days 6-10)
 
 | Day | Topic | Key Learnings |
 |-----|-------|---------------|
 | Day 6 | Baseline Model & Metrics | Simple model, accuracy, precision, recall, F1, ROC-AUC |
 | Day 7 | Logistic Regression | Linear model, coefficients, interpretation |
-| Day 8 | Model Evaluation Deep Dive | Confusion matrix, classification report, ROC curves |
-| Day 9 | Feature Importance | Which features matter most? SHAP values |
-| Day 10 | Cross-Validation | K-fold CV, model selection, avoiding overfitting |
+| Day 8 | Tree-Based Models (Random Forest) | Ensemble methods, bagging, feature importance |
+| Day 9 | XGBoost & Model Comparison | Gradient boosting, compare all models |
+| Day 10 | Model Selection & Saving | Select best model, save for deployment |
 
 **Outcomes:**
-- ✅ Baseline model for comparison
-- ✅ Logistic regression model
+- ✅ Multiple trained models (Logistic Regression, Random Forest, XGBoost)
 - ✅ Comprehensive evaluation framework
-- ✅ Understanding of feature importance
+- ✅ Best model selected and saved
+- ✅ Ready for API integration
 
 ---
 
-### 🟡 **Week 3: Advanced Models** (Days 11-15)
+### 🟡 **Week 3: API Development** (Days 11-15)
 
 | Day | Topic | Key Learnings |
 |-----|-------|---------------|
-| Day 11 | Tree-Based Models (Random Forest) | Ensemble methods, bagging, feature importance |
-| Day 12 | XGBoost | Gradient boosting, handling imbalance |
-| Day 13 | Hyperparameter Tuning | GridSearchCV, RandomizedSearchCV, Optuna |
-| Day 14 | Model Comparison & Selection | Compare all models, select best performer |
-| Day 15 | Model Calibration & Thresholds | Probability calibration, optimal threshold |
+| [Day 11](guide/week3/day11_guide.md) | FastAPI Setup & Basic Prediction Endpoint | FastAPI app, model loading, /predict endpoint, Swagger docs |
+| [Day 12](guide/week3/day12_guide.md) | Request Validation & Error Handling | Pydantic validators, error handlers, structured errors |
+| [Day 13](guide/week3/day13_guide.md) | Authentication & Rate Limiting | JWT tokens, API keys, RBAC, rate limits |
+| [Day 14](guide/week3/day14_guide.md) | Logging & Monitoring | Structured logging, Prometheus metrics, Grafana |
+| [Day 15](guide/week3/day15_guide.md) | Testing (Pytest & Load Tests) | Unit tests, integration tests, Locust load testing |
 
 **Outcomes:**
-- ✅ Random Forest model
-- ✅ XGBoost model (likely best performer)
-- ✅ Tuned hyperparameters
-- ✅ Final production model selected
-
----
-
-### 🔴 **Week 4: API Deployment** (Days 16-20)
-
-| Day | Topic | Key Learnings |
-|-----|-------|---------------|
-| Day 16 | FastAPI Basics | API setup, routes, request/response models |
-| Day 17 | API Endpoints | Prediction endpoint, batch prediction, model info |
-| Day 18 | API Testing | Unit tests, integration tests, error handling |
-| Day 19 | Documentation & README | API docs, usage examples, deployment guide |
-| Day 20 | Final Integration | End-to-end testing, demo, presentation |
-
-**Outcomes:**
-- ✅ Production FastAPI application
-- ✅ RESTful prediction endpoints
-- ✅ Comprehensive tests
-- ✅ Full documentation
-- ✅ Deployable application
+- ✅ Production-ready FastAPI application
+- ✅ Secure authentication (JWT + API keys)
+- ✅ Rate limiting and monitoring
+- ✅ Comprehensive test suite (>80% coverage)
+- ✅ **Deployable Credit Risk Scoring API** 🚀
 
 ---
 
@@ -186,8 +168,7 @@ credit-risk-api/
 ├── guide/
 │   ├── week1/                  # Day 1-5 guides
 │   ├── week2/                  # Day 6-10 guides
-│   ├── week3/                  # Day 11-15 guides
-│   └── week4/                  # Day 16-20 guides
+│   └── week3/                  # Day 11-15 guides
 ├── requirements.txt
 └── README.md                   # This file
 ```
@@ -273,6 +254,7 @@ After completing this guide, you will be able to:
 
 ### Time Management
 - **Consistent practice:** 2-3 hours per day
+- **15 days total:** 3 weeks to a production API
 - **Don't skip days:** Each day builds on previous work
 - **Review regularly:** Revisit previous notebooks
 
@@ -337,18 +319,19 @@ This project is for educational purposes.
 - [x] Day 4: Deep EDA & Outlier Detection
 - [x] Day 5: Preprocessing Pipeline
 
-### Week 2: Baseline Models 🚧 COMING SOON
+### Week 2: ML Model Training 🚧 COMING SOON
 - [ ] Day 6: Baseline Model & Metrics
 - [ ] Day 7: Logistic Regression
-- [ ] Day 8: Model Evaluation Deep Dive
-- [ ] Day 9: Feature Importance
-- [ ] Day 10: Cross-Validation
+- [ ] Day 8: Tree-Based Models (Random Forest)
+- [ ] Day 9: XGBoost & Model Comparison
+- [ ] Day 10: Model Selection & Saving
 
-### Week 3: Advanced Models 📅 PLANNED
-- [ ] Day 11-15
-
-### Week 4: API Deployment 📅 PLANNED
-- [ ] Day 16-20
+### Week 3: API Development ✅ COMPLETE
+- [x] Day 11: FastAPI Setup & Basic Prediction Endpoint
+- [x] Day 12: Request Validation & Error Handling
+- [x] Day 13: Authentication & Rate Limiting
+- [x] Day 14: Logging & Monitoring
+- [x] Day 15: Testing (Pytest & Load Tests)
 
 ---
 
