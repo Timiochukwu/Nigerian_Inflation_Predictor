@@ -140,7 +140,7 @@ By the end of this guide, you will have:
 
 Let's load the preprocessed data and baseline results from Day 6.
 
-**Create a new file:** `day7_practice.py`
+**Create a new file:** `logistic_regression.py`
 
 Delete everything and replace with this:
 
@@ -220,7 +220,7 @@ print(f"\n🎯 Goal: Beat baseline on ALL metrics!")
 **Run it:**
 ```bash
 cd /home/user/Nigerian_Inflation_Predictor
-python credit-risk-api/guide/week2/day7_practice.py
+python credit-risk-api/src/models/logistic_regression.py
 ```
 
 **Expected Output:**
@@ -256,7 +256,7 @@ WEEK 2, DAY 7: LOGISTIC REGRESSION
 
 Now let's train our first real ML model with class weights to handle imbalance.
 
-**Add this to your `day7_practice.py` file:**
+**Add this to your `logistic_regression.py` file:**
 
 ```python
 # ============================================================================
@@ -317,7 +317,7 @@ else:
 
 **Run it again:**
 ```bash
-python credit-risk-api/guide/week2/day7_practice.py
+python credit-risk-api/src/models/logistic_regression.py
 ```
 
 **Expected Output:**
@@ -368,7 +368,7 @@ STEP 2: Train Logistic Regression
 
 Let's use our trained model to make predictions on the test set.
 
-**Add this to your `day7_practice.py` file:**
+**Add this to your `logistic_regression.py` file:**
 
 ```python
 # ============================================================================
@@ -417,7 +417,7 @@ for i in range(min(10, len(y_test))):
 
 **Run it again:**
 ```bash
-python credit-risk-api/guide/week2/day7_practice.py
+python credit-risk-api/src/models/logistic_regression.py
 ```
 
 **Expected Output:**
@@ -475,7 +475,7 @@ Bad        Bad               0.891 ✅
 
 Let's calculate metrics and see if we beat the baseline!
 
-**Add this to your `day7_practice.py` file:**
+**Add this to your `logistic_regression.py` file:**
 
 ```python
 # ============================================================================
@@ -530,7 +530,7 @@ print(classification_report(y_test, y_pred,
 
 **Run it again:**
 ```bash
-python credit-risk-api/guide/week2/day7_practice.py
+python credit-risk-api/src/models/logistic_regression.py
 ```
 
 **Expected Output:**
@@ -593,7 +593,7 @@ weighted avg      0.772     0.775     0.773      1000
 
 Let's see which features drive the model's predictions.
 
-**Add this to your `day7_practice.py` file:**
+**Add this to your `logistic_regression.py` file:**
 
 ```python
 # ============================================================================
@@ -718,7 +718,7 @@ Rank   Feature                             Coefficient Impact
 
 Let's create confusion matrix and ROC curve visualizations to compare with baseline.
 
-**Add this to your `day7_practice.py` file:**
+**Add this to your `logistic_regression.py` file:**
 
 ```python
 # ============================================================================
@@ -848,7 +848,7 @@ print("\n✅ All visualizations created!")
 
 **Run it again:**
 ```bash
-python credit-risk-api/guide/week2/day7_practice.py
+python credit-risk-api/src/models/logistic_regression.py
 ```
 
 **Expected Output:**
@@ -886,7 +886,7 @@ STEP 6: Create Visualizations
 
 Let's find the best probability threshold to maximize F1-Score.
 
-**Add this to your `day7_practice.py` file:**
+**Add this to your `logistic_regression.py` file:**
 
 ```python
 # ============================================================================
@@ -996,7 +996,7 @@ print(f"   Improvement: {(best_f1 - default_threshold_f1)*100:+.1f} percentage p
 
 **Run it again:**
 ```bash
-python credit-risk-api/guide/week2/day7_practice.py
+python credit-risk-api/src/models/logistic_regression.py
 ```
 
 **Expected Output:**
@@ -1065,7 +1065,7 @@ This is the power of threshold optimization - squeeze extra performance from sam
 
 Let's save the model and generate a comprehensive summary.
 
-**Add this to your `day7_practice.py` file:**
+**Add this to your `logistic_regression.py` file:**
 
 ```python
 # ============================================================================
@@ -1250,7 +1250,7 @@ print("\n🚀 Next: Build Random Forest and XGBoost to compare!")
 
 **Run it one final time:**
 ```bash
-python credit-risk-api/guide/week2/day7_practice.py
+python credit-risk-api/src/models/logistic_regression.py
 ```
 
 **Expected Output:**
@@ -1382,7 +1382,7 @@ credit-risk-api/
 │   └── model_results.csv (updated)
 └── guide/
     └── week2/
-        └── day7_practice.py (Complete Logistic Regression script)
+        └── logistic_regression.py (Complete Logistic Regression script)
 ```
 
 ---

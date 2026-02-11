@@ -56,7 +56,7 @@ Create a new Python file for today's practice.
 
 **Create the file:**
 ```bash
-touch credit-risk-api/guide/week2/day8_practice.py
+touch credit-risk-api/src/models/random_forest.py
 ```
 
 **Add this code:**
@@ -154,7 +154,7 @@ print("\n✅ Data loaded and ready!")
 
 **Run it:**
 ```bash
-python credit-risk-api/guide/week2/day8_practice.py
+python credit-risk-api/src/models/random_forest.py
 ```
 
 **Expected Output:**
@@ -201,7 +201,7 @@ STEP 1: Load Preprocessed Data
 
 Let's train a Random Forest with default hyperparameters first.
 
-**Add this to your `day8_practice.py` file:**
+**Add this to your `random_forest.py` file:**
 
 ```python
 # ============================================================================
@@ -261,7 +261,7 @@ print("   4. Trees voted on final predictions")
 
 **Run it:**
 ```bash
-python credit-risk-api/guide/week2/day8_practice.py
+python credit-risk-api/src/models/random_forest.py
 ```
 
 **Expected Output:**
@@ -312,7 +312,7 @@ STEP 2: Train Random Forest (Default Settings)
 
 Let's use the trained Random Forest to predict on test data.
 
-**Add this to your `day8_practice.py` file:**
+**Add this to your `random_forest.py` file:**
 
 ```python
 # ============================================================================
@@ -366,7 +366,7 @@ print("   3. If P(Bad) ≥ 0.50 → Predict 'Bad', else 'Good'")
 
 **Run it:**
 ```bash
-python credit-risk-api/guide/week2/day8_practice.py
+python credit-risk-api/src/models/random_forest.py
 ```
 
 **Expected Output:**
@@ -424,7 +424,7 @@ STEP 3: Make Predictions on Test Set
 
 Let's calculate all performance metrics and compare with previous models.
 
-**Add this to your `day8_practice.py` file:**
+**Add this to your `random_forest.py` file:**
 
 ```python
 # ============================================================================
@@ -538,7 +538,7 @@ print("\n✅ Evaluation complete!")
 
 **Run it:**
 ```bash
-python credit-risk-api/guide/week2/day8_practice.py
+python credit-risk-api/src/models/random_forest.py
 ```
 
 **Expected Output:**
@@ -622,7 +622,7 @@ MODEL COMPARISON
 
 Let's see which features Random Forest considers most important.
 
-**Add this to your `day8_practice.py` file:**
+**Add this to your `random_forest.py` file:**
 
 ```python
 # ============================================================================
@@ -710,7 +710,7 @@ print("\n✅ Feature importance analysis complete!")
 
 **Run it:**
 ```bash
-python credit-risk-api/guide/week2/day8_practice.py
+python credit-risk-api/src/models/random_forest.py
 ```
 
 **Expected Output:**
@@ -810,7 +810,7 @@ FEATURE IMPORTANCE COMPARISON
 
 Let's create comprehensive visualizations to understand Random Forest performance.
 
-**Add this to your `day8_practice.py` file:**
+**Add this to your `random_forest.py` file:**
 
 ```python
 # ============================================================================
@@ -994,7 +994,7 @@ print("\n✅ All visualizations created!")
 
 **Run it:**
 ```bash
-python credit-risk-api/guide/week2/day8_practice.py
+python credit-risk-api/src/models/random_forest.py
 ```
 
 **Expected Output:**
@@ -1035,7 +1035,7 @@ STEP 6: Create Visualizations
 
 Let's optimize Random Forest hyperparameters to squeeze out more performance.
 
-**Add this to your `day8_practice.py` file:**
+**Add this to your `random_forest.py` file:**
 
 ```python
 # ============================================================================
@@ -1161,7 +1161,7 @@ print("\n✅ Hyperparameter tuning complete!")
 
 **Run it:**
 ```bash
-python credit-risk-api/guide/week2/day8_practice.py
+python credit-risk-api/src/models/random_forest.py
 ```
 
 **Expected Output:**
@@ -1242,7 +1242,7 @@ Fitting 3 folds for each of 36 candidates, totalling 108 fits
 
 Let's save the optimized Random Forest and generate comprehensive summary.
 
-**Add this to your `day8_practice.py` file:**
+**Add this to your `random_forest.py` file:**
 
 ```python
 # ============================================================================
@@ -1434,7 +1434,7 @@ print("\n🚀 Next: Build XGBoost to see if we can beat 70% F1-Score!")
 
 **Run it one final time:**
 ```bash
-python credit-risk-api/guide/week2/day8_practice.py
+python credit-risk-api/src/models/random_forest.py
 ```
 
 **Expected Output:**
@@ -1565,7 +1565,7 @@ credit-risk-api/
 │   └── model_results.csv (updated)
 └── guide/
     └── week2/
-        └── day8_practice.py (Complete Random Forest script)
+        └── random_forest.py (Complete Random Forest script)
 ```
 
 ---

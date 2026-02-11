@@ -56,7 +56,7 @@ Create the final Python file for comprehensive comparison.
 
 **Create the file:**
 ```bash
-touch credit-risk-api/guide/week2/day10_practice.py
+touch credit-risk-api/src/models/compare_models.py
 ```
 
 **Add this code:**
@@ -176,7 +176,7 @@ print("\n✅ All models and results loaded!")
 
 **Run it:**
 ```bash
-python credit-risk-api/guide/week2/day10_practice.py
+python credit-risk-api/src/models/compare_models.py
 ```
 
 **Expected Output:**
@@ -228,7 +228,7 @@ STEP 1: Load All Model Results
 
 Let's deep dive into performance metrics and identify strengths/weaknesses of each model.
 
-**Add this to your `day10_practice.py` file:**
+**Add this to your `compare_models.py` file:**
 
 ```python
 # ============================================================================
@@ -349,7 +349,7 @@ print("\n✅ Comprehensive comparison complete!")
 
 **Run it:**
 ```bash
-python credit-risk-api/guide/week2/day10_practice.py
+python credit-risk-api/src/models/compare_models.py
 ```
 
 **Expected Output:**
@@ -449,7 +449,7 @@ CONFUSION MATRIX ANALYSIS
 
 Let's translate model performance into business dollars and ROI.
 
-**Add this to your `day10_practice.py` file:**
+**Add this to your `compare_models.py` file:**
 
 ```python
 # ============================================================================
@@ -557,7 +557,7 @@ print("\n✅ Business impact analysis complete!")
 
 **Run it:**
 ```bash
-python credit-risk-api/guide/week2/day10_practice.py
+python credit-risk-api/src/models/compare_models.py
 ```
 
 **Expected Output:**
@@ -630,7 +630,7 @@ XGBoost                   ₦       110,000,000 ₦       107,000,000       71.3
 
 Let's systematically evaluate all models against multiple selection criteria.
 
-**Add this to your `day10_practice.py` file:**
+**Add this to your `compare_models.py` file:**
 
 ```python
 # ============================================================================
@@ -863,7 +863,7 @@ print("\n✅ Model selection complete!")
 
 **Run it:**
 ```bash
-python credit-risk-api/guide/week2/day10_practice.py
+python credit-risk-api/src/models/compare_models.py
 ```
 
 **Expected Output:**
@@ -990,7 +990,7 @@ OVERALL MODEL SCORING
 
 Let's create a deployment plan for XGBoost in production.
 
-**Add this to your `day10_practice.py` file:**
+**Add this to your `compare_models.py` file:**
 
 ```python
 # ============================================================================
@@ -1144,7 +1144,7 @@ print("\n✅ Deployment recommendations complete!")
 
 **Run it:**
 ```bash
-python credit-risk-api/guide/week2/day10_practice.py
+python credit-risk-api/src/models/compare_models.py
 ```
 
 **Expected Output:** (truncated for brevity)
@@ -1194,7 +1194,7 @@ STEP 5: Production Deployment Recommendations
 
 Let's create comprehensive visualizations summarizing all findings.
 
-**Add this to your `day10_practice.py` file:**
+**Add this to your `compare_models.py` file:**
 
 ```python
 # ============================================================================
@@ -1411,7 +1411,7 @@ print("\n✅ All final visualizations created!")
 
 **Run it:**
 ```bash
-python credit-risk-api/guide/week2/day10_practice.py
+python credit-risk-api/src/models/compare_models.py
 ```
 
 **Expected Output:**
@@ -1446,7 +1446,7 @@ STEP 6: Create Final Visualizations
 
 Let's create a comprehensive PDF-ready summary report.
 
-**Add this to your `day10_practice.py` file:**
+**Add this to your `compare_models.py` file:**
 
 ```python
 # ============================================================================
@@ -1687,7 +1687,7 @@ print("\n✅ Final report generation complete!")
 
 **Run it:**
 ```bash
-python credit-risk-api/guide/week2/day10_practice.py
+python credit-risk-api/src/models/compare_models.py
 ```
 
 **Expected Output:**
@@ -1718,7 +1718,7 @@ STEP 7: Generate Final Report
 
 Final summary and completion of Week 2!
 
-**Add this to your `day10_practice.py` file:**
+**Add this to your `compare_models.py` file:**
 
 ```python
 # ============================================================================
@@ -1893,7 +1893,7 @@ print("\n✅ WEEK 2 COMPLETE!")
 
 **Run it one final time:**
 ```bash
-python credit-risk-api/guide/week2/day10_practice.py
+python credit-risk-api/src/models/compare_models.py
 ```
 
 **Expected Output:**
@@ -1981,7 +1981,7 @@ credit-risk-api/
         ├── day8_guide.md
         ├── day9_guide.md
         ├── day10_guide.md
-        └── day10_practice.py (Final script)
+        └── compare_models.py (Final script)
 ```
 
 ---

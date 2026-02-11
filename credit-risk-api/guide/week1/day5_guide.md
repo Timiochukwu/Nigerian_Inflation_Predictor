@@ -139,7 +139,7 @@ By the end of this guide, you will have:
 
 First, let's load the cleaned dataset from Day 4 which has outliers handled.
 
-**Create a new file:** `day5_practice.py`
+**Create a new file:** `preprocess_split.py`
 
 Delete everything and replace with this:
 
@@ -195,7 +195,7 @@ print(f"   Memory usage: {master_df.memory_usage(deep=True).sum() / 1024:.1f} KB
 **Run it:**
 ```bash
 cd /home/user/Nigerian_Inflation_Predictor
-python credit-risk-api/guide/week1/day5_practice.py
+python credit-risk-api/src/data/preprocess_split.py
 ```
 
 **Expected Output:**
@@ -227,7 +227,7 @@ DAY 5: FINAL PREPROCESSING & TRAIN/TEST SPLIT
 
 Now let's separate features (X) from target (y) and remove ID columns.
 
-**Add this to your `day5_practice.py` file:**
+**Add this to your `preprocess_split.py` file:**
 
 ```python
 # ============================================================================
@@ -281,7 +281,7 @@ print(X.dtypes.value_counts())
 
 **Run it again:**
 ```bash
-python credit-risk-api/guide/week1/day5_practice.py
+python credit-risk-api/src/data/preprocess_split.py
 ```
 
 **Expected Output:**
@@ -333,7 +333,7 @@ dtype: int64
 
 Let's split the data into training (80%) and testing (20%) sets while maintaining class balance.
 
-**Add this to your `day5_practice.py` file:**
+**Add this to your `preprocess_split.py` file:**
 
 ```python
 # ============================================================================
@@ -381,7 +381,7 @@ print(f"   Both sets maintain ~70% Good, ~30% Bad distribution")
 
 **Run it again:**
 ```bash
-python credit-risk-api/guide/week1/day5_practice.py
+python credit-risk-api/src/data/preprocess_split.py
 ```
 
 **Expected Output:**
@@ -450,7 +450,7 @@ Name: target, dtype: int64
 
 Now let's scale all numeric features to have mean=0 and std=1.
 
-**Add this to your `day5_practice.py` file:**
+**Add this to your `preprocess_split.py` file:**
 
 ```python
 # ============================================================================
@@ -510,7 +510,7 @@ print(X_train_scaled_df.head())
 
 **Run it again:**
 ```bash
-python credit-risk-api/guide/week1/day5_practice.py
+python credit-risk-api/src/data/preprocess_split.py
 ```
 
 **Expected Output:**
@@ -606,7 +606,7 @@ This customer borrowed 1 standard deviation above average
 
 Let's save our production-ready datasets for Week 2.
 
-**Add this to your `day5_practice.py` file:**
+**Add this to your `preprocess_split.py` file:**
 
 ```python
 # ============================================================================
@@ -665,7 +665,7 @@ print(f"\n✅ All datasets saved successfully!")
 
 **Run it again:**
 ```bash
-python credit-risk-api/guide/week1/day5_practice.py
+python credit-risk-api/src/data/preprocess_split.py
 ```
 
 **Expected Output:**
@@ -728,7 +728,7 @@ prediction = model.predict(new_customer_scaled)
 
 Let's generate a comprehensive summary of everything accomplished in Week 1.
 
-**Add this to your `day5_practice.py` file:**
+**Add this to your `preprocess_split.py` file:**
 
 ```python
 # ============================================================================
@@ -823,7 +823,7 @@ print(f"""
       ✅ day2_practice.py (data merging)
       ✅ day3_practice.py (feature engineering)
       ✅ day4_practice.py (EDA & outliers)
-      ✅ day5_practice.py (preprocessing & split)
+      ✅ preprocess_split.py (preprocessing & split)
 
 🔧 PREPROCESSING PIPELINE:
    1. Load data ✅
@@ -940,7 +940,7 @@ You'll learn:
 
 **Run it one final time:**
 ```bash
-python credit-risk-api/guide/week1/day5_practice.py
+python credit-risk-api/src/data/preprocess_split.py
 ```
 
 **Expected Output:**
@@ -1130,7 +1130,7 @@ credit-risk-api/
 │       └── feature_names.txt           (33 feature names)
 └── guide/
     └── week1/
-        └── day5_practice.py            (Complete preprocessing script)
+        └── preprocess_split.py            (Complete preprocessing script)
 ```
 
 ---

@@ -99,7 +99,7 @@ By the end of this guide, you will have:
 
 First, let's load the enriched dataset from Day 3 and prepare it for correlation analysis.
 
-**Create a new file:** `day4_practice.py`
+**Create a new file:** `eda_outliers.py`
 
 Delete everything and replace with this:
 
@@ -158,7 +158,7 @@ print(f"   Bad Loans (1):  {(master_df['target'] == 1).sum():,} ({(master_df['ta
 **Run it:**
 ```bash
 cd /home/user/Nigerian_Inflation_Predictor
-python credit-risk-api/guide/week1/day4_practice.py
+python credit-risk-api/src/data/eda_outliers.py
 ```
 
 **Expected Output:**
@@ -196,7 +196,7 @@ Name: target, dtype: int64
 
 Now let's calculate how strongly each feature correlates with the target variable (default risk).
 
-**Add this to your `day4_practice.py` file:**
+**Add this to your `eda_outliers.py` file:**
 
 ```python
 # ============================================================================
@@ -232,7 +232,7 @@ for feat in correlations_sorted.head(15).index:
 
 **Run it again:**
 ```bash
-python credit-risk-api/guide/week1/day4_practice.py
+python credit-risk-api/src/data/eda_outliers.py
 ```
 
 **Expected Output:**
@@ -286,7 +286,7 @@ referredby                               0.0892    ↑ Bad
 
 Let's extract and summarize the top predictive features we'll focus on for modeling.
 
-**Add this to your `day4_practice.py` file:**
+**Add this to your `eda_outliers.py` file:**
 
 ```python
 # ============================================================================
@@ -318,7 +318,7 @@ print(f"   • |r| < 0.1: Very weak correlation")
 
 **Run it again:**
 ```bash
-python credit-risk-api/guide/week1/day4_practice.py
+python credit-risk-api/src/data/eda_outliers.py
 ```
 
 **Expected Output:**
@@ -368,7 +368,7 @@ STEP 3: Key Feature Insights
 
 Now let's scan all numeric features for outliers using the IQR (Interquartile Range) method.
 
-**Add this to your `day4_practice.py` file:**
+**Add this to your `eda_outliers.py` file:**
 
 ```python
 # ============================================================================
@@ -422,7 +422,7 @@ print(f"📈 Total outlier values detected: {outlier_df['outliers'].sum():,.0f}"
 
 **Run it again:**
 ```bash
-python credit-risk-api/guide/week1/day4_practice.py
+python credit-risk-api/src/data/eda_outliers.py
 ```
 
 **Expected Output:**
@@ -480,7 +480,7 @@ total_loans                           367       7.3%
 
 Instead of deleting outliers (losing valuable data), we'll **cap** them to the upper/lower bounds.
 
-**Add this to your `day4_practice.py` file:**
+**Add this to your `eda_outliers.py` file:**
 
 ```python
 # ============================================================================
@@ -527,7 +527,7 @@ print(f"✅ All features now within IQR bounds (1.5 × IQR)")
 
 **Run it again:**
 ```bash
-python credit-risk-api/guide/week1/day4_practice.py
+python credit-risk-api/src/data/eda_outliers.py
 ```
 
 **Expected Output:**
@@ -586,7 +586,7 @@ After capping:   [10, 25, 30,  45,  45, 15]
 
 Let's examine the distributions of our top predictive features after outlier handling.
 
-**Add this to your `day4_practice.py` file:**
+**Add this to your `eda_outliers.py` file:**
 
 ```python
 # ============================================================================
@@ -614,7 +614,7 @@ for feat in top_features[:5]:
 
 **Run it again:**
 ```bash
-python credit-risk-api/guide/week1/day4_practice.py
+python credit-risk-api/src/data/eda_outliers.py
 ```
 
 **Expected Output:**
@@ -690,7 +690,7 @@ hist_closure_rate:
 
 Let's create two important visualizations: a correlation heatmap and feature distributions.
 
-**Add this to your `day4_practice.py` file:**
+**Add this to your `eda_outliers.py` file:**
 
 ```python
 # ============================================================================
@@ -755,7 +755,7 @@ print("\n✅ Visualizations complete!")
 
 **Run it again:**
 ```bash
-python credit-risk-api/guide/week1/day4_practice.py
+python credit-risk-api/src/data/eda_outliers.py
 ```
 
 **Expected Output:**
@@ -807,7 +807,7 @@ STEP 7: Creating Visualizations
 
 Finally, let's save our cleaned dataset with outliers handled.
 
-**Add this to your `day4_practice.py` file:**
+**Add this to your `eda_outliers.py` file:**
 
 ```python
 # ============================================================================
@@ -878,7 +878,7 @@ for i, feat in enumerate(top_features, 1):
 
 **Run it one final time:**
 ```bash
-python credit-risk-api/guide/week1/day4_practice.py
+python credit-risk-api/src/data/eda_outliers.py
 ```
 
 **Expected Output:**
@@ -1046,7 +1046,7 @@ credit-risk-api/
 │   └── day4_feature_distributions.png     (Distribution plots Good vs Bad)
 └── guide/
     └── week1/
-        └── day4_practice.py               (378 lines, complete script)
+        └── eda_outliers.py               (378 lines, complete script)
 ```
 
 ---

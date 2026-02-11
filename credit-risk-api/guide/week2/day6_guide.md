@@ -192,7 +192,7 @@ By the end of this guide, you will have:
 
 Let's load the training and testing datasets we created in Day 5.
 
-**Create a new file:** `day6_practice.py`
+**Create a new file:** `baseline_model.py`
 
 Delete everything and replace with this:
 
@@ -278,7 +278,7 @@ print(f"\n✅ Stratification verified: Both sets have ~70% Good, ~30% Bad")
 **Run it:**
 ```bash
 cd /home/user/Nigerian_Inflation_Predictor
-python credit-risk-api/guide/week2/day6_practice.py
+python credit-risk-api/src/models/baseline_model.py
 ```
 
 **Expected Output:**
@@ -332,7 +332,7 @@ Name: target, dtype: int64
 
 Now let's build the simplest possible model: always predict the majority class (Good Loan = 0).
 
-**Add this to your `day6_practice.py` file:**
+**Add this to your `baseline_model.py` file:**
 
 ```python
 # ============================================================================
@@ -378,7 +378,7 @@ print(f"\n💡 As expected: Baseline predicts EVERY loan is Good (0)")
 
 **Run it again:**
 ```bash
-python credit-risk-api/guide/week2/day6_practice.py
+python credit-risk-api/src/models/baseline_model.py
 ```
 
 **Expected Output:**
@@ -429,7 +429,7 @@ Any real model should beat this baseline significantly!
 
 Let's calculate all the important metrics to evaluate our baseline.
 
-**Add this to your `day6_practice.py` file:**
+**Add this to your `baseline_model.py` file:**
 
 ```python
 # ============================================================================
@@ -483,7 +483,7 @@ print(classification_report(y_test, y_pred_baseline,
 
 **Run it again:**
 ```bash
-python credit-risk-api/guide/week2/day6_practice.py
+python credit-risk-api/src/models/baseline_model.py
 ```
 
 **Expected Output:**
@@ -547,7 +547,7 @@ This demonstrates why **accuracy alone is meaningless** for imbalanced datasets!
 
 Let's visualize where the baseline model makes mistakes.
 
-**Add this to your `day6_practice.py` file:**
+**Add this to your `baseline_model.py` file:**
 
 ```python
 # ============================================================================
@@ -616,7 +616,7 @@ plt.close()
 
 **Run it again:**
 ```bash
-python credit-risk-api/guide/week2/day6_practice.py
+python credit-risk-api/src/models/baseline_model.py
 ```
 
 **Expected Output:**
@@ -670,7 +670,7 @@ The visualization clearly shows the baseline's fatal flaw: it approves every loa
 
 Let's create an ROC curve to visualize the model's discrimination ability.
 
-**Add this to your `day6_practice.py` file:**
+**Add this to your `baseline_model.py` file:**
 
 ```python
 # ============================================================================
@@ -743,7 +743,7 @@ plt.close()
 
 **Run it again:**
 ```bash
-python credit-risk-api/guide/week2/day6_practice.py
+python credit-risk-api/src/models/baseline_model.py
 ```
 
 **Expected Output:**
@@ -795,7 +795,7 @@ The baseline's AUC of 0.5 confirms it has **zero discrimination ability** - no b
 
 Let's save the baseline results for comparison with future models.
 
-**Add this to your `day6_practice.py` file:**
+**Add this to your `baseline_model.py` file:**
 
 ```python
 # ============================================================================
@@ -848,7 +848,7 @@ print(f"   Results PKL: {results_pkl_path}")
 
 **Run it again:**
 ```bash
-python credit-risk-api/guide/week2/day6_practice.py
+python credit-risk-api/src/models/baseline_model.py
 ```
 
 **Expected Output:**
@@ -881,7 +881,7 @@ These files will be used tomorrow to compare Logistic Regression against the bas
 
 Let's generate a comprehensive summary of what we learned today.
 
-**Add this to your `day6_practice.py` file:**
+**Add this to your `baseline_model.py` file:**
 
 ```python
 # ============================================================================
@@ -999,7 +999,7 @@ print("\n🚀 Next: Build Logistic Regression and beat this baseline!")
 
 **Run it one final time:**
 ```bash
-python credit-risk-api/guide/week2/day6_practice.py
+python credit-risk-api/src/models/baseline_model.py
 ```
 
 **Expected Output:**
@@ -1163,7 +1163,7 @@ credit-risk-api/
 │   └── model_results.csv
 └── guide/
     └── week2/
-        └── day6_practice.py (Complete baseline script)
+        └── baseline_model.py (Complete baseline script)
 ```
 
 ---

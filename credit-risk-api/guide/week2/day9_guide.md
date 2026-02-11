@@ -67,7 +67,7 @@ Create a new Python file for today's practice.
 
 **Create the file:**
 ```bash
-touch credit-risk-api/guide/week2/day9_practice.py
+touch credit-risk-api/src/models/xgboost_model.py
 ```
 
 **Add this code:**
@@ -174,7 +174,7 @@ print("\n✅ Data loaded and ready!")
 
 **Run it:**
 ```bash
-python credit-risk-api/guide/week2/day9_practice.py
+python credit-risk-api/src/models/xgboost_model.py
 ```
 
 **Expected Output:**
@@ -227,7 +227,7 @@ STEP 1: Load Preprocessed Data
 
 Let's train XGBoost with reasonable default hyperparameters.
 
-**Add this to your `day9_practice.py` file:**
+**Add this to your `xgboost_model.py` file:**
 
 ```python
 # ============================================================================
@@ -300,7 +300,7 @@ print("   • XGBoost: Trees sequential, each fixes previous errors")
 
 **Run it:**
 ```bash
-python credit-risk-api/guide/week2/day9_practice.py
+python credit-risk-api/src/models/xgboost_model.py
 ```
 
 **Expected Output:**
@@ -364,7 +364,7 @@ XGBoost is FAST because of optimized C++ implementation!
 
 Let's use the trained XGBoost to predict on test data.
 
-**Add this to your `day9_practice.py` file:**
+**Add this to your `xgboost_model.py` file:**
 
 ```python
 # ============================================================================
@@ -423,7 +423,7 @@ print("   • XGBoost: Sum weighted predictions → sigmoid → probability")
 
 **Run it:**
 ```bash
-python credit-risk-api/guide/week2/day9_practice.py
+python credit-risk-api/src/models/xgboost_model.py
 ```
 
 **Expected Output:**
@@ -486,7 +486,7 @@ STEP 3: Make Predictions on Test Set
 
 Let's calculate all performance metrics and compare with previous models.
 
-**Add this to your `day9_practice.py` file:**
+**Add this to your `xgboost_model.py` file:**
 
 ```python
 # ============================================================================
@@ -613,7 +613,7 @@ print("\n✅ Evaluation complete!")
 
 **Run it:**
 ```bash
-python credit-risk-api/guide/week2/day9_practice.py
+python credit-risk-api/src/models/xgboost_model.py
 ```
 
 **Expected Output:**
@@ -703,7 +703,7 @@ MODEL COMPARISON (ALL MODELS)
 
 Let's see which features XGBoost considers most important.
 
-**Add this to your `day9_practice.py` file:**
+**Add this to your `xgboost_model.py` file:**
 
 ```python
 # ============================================================================
@@ -796,7 +796,7 @@ print("\n✅ Feature importance analysis complete!")
 
 **Run it:**
 ```bash
-python credit-risk-api/guide/week2/day9_practice.py
+python credit-risk-api/src/models/xgboost_model.py
 ```
 
 **Expected Output:**
@@ -895,7 +895,7 @@ FEATURE IMPORTANCE COMPARISON (ALL MODELS)
 
 Let's create comprehensive visualizations comparing all models.
 
-**Add this to your `day9_practice.py` file:**
+**Add this to your `xgboost_model.py` file:**
 
 ```python
 # ============================================================================
@@ -1104,7 +1104,7 @@ print("\n✅ All visualizations created!")
 
 **Run it:**
 ```bash
-python credit-risk-api/guide/week2/day9_practice.py
+python credit-risk-api/src/models/xgboost_model.py
 ```
 
 **Expected Output:**
@@ -1145,7 +1145,7 @@ STEP 6: Create Visualizations
 
 Let's optimize XGBoost hyperparameters to squeeze out maximum performance.
 
-**Add this to your `day9_practice.py` file:**
+**Add this to your `xgboost_model.py` file:**
 
 ```python
 # ============================================================================
@@ -1280,7 +1280,7 @@ print("\n✅ Hyperparameter tuning complete!")
 
 **Run it:**
 ```bash
-python credit-risk-api/guide/week2/day9_practice.py
+python credit-risk-api/src/models/xgboost_model.py
 ```
 
 **Expected Output:**
@@ -1368,7 +1368,7 @@ Fitting 3 folds for each of 36 candidates, totalling 108 fits
 
 Let's save the optimized XGBoost and generate final comprehensive summary.
 
-**Add this to your `day9_practice.py` file:**
+**Add this to your `xgboost_model.py` file:**
 
 ```python
 # ============================================================================
@@ -1567,7 +1567,7 @@ print("\n🚀 Next: Final model comparison and selection for production!")
 
 **Run it one final time:**
 ```bash
-python credit-risk-api/guide/week2/day9_practice.py
+python credit-risk-api/src/models/xgboost_model.py
 ```
 
 **Expected Output:**
@@ -1703,7 +1703,7 @@ credit-risk-api/
 │   └── model_results.csv (updated)
 └── guide/
     └── week2/
-        └── day9_practice.py (Complete XGBoost script)
+        └── xgboost_model.py (Complete XGBoost script)
 ```
 
 ---
